@@ -379,6 +379,17 @@ span.mw-ui-icon {
 .mw-ui-icon:before {
 	top: 0
 }
+.client-js .collapsible-block {
+	display: none
+}
+.client-js .collapsible-block.open-block {
+	display: block
+}
+@media all and (min-width: 720px) {
+	.client-js[onclick] + .collapsible-block {
+		display: block
+	}
+}
 div,
 span,
 h1,
@@ -823,9 +834,6 @@ input.search::-webkit-search-results-decoration {
 	-moz-box-sizing: border-box;
 	box-sizing: border-box
 }
-.toc-mobile,
-.toc,
-.client-nojs .toc-mobile,
 .client-js .mw-redirectedfrom,
 .printfooter,
 .jsonly {
@@ -1141,6 +1149,63 @@ html {
 	font-weight: normal
 }
 }
+#toc.toc-mobile {
+	display: none
+}
+#toc {
+	display: none;
+	position: relative;
+	margin: 1em 0;
+	background-color: #f8f9fa;
+	border: solid 1px #eaecf0;
+	box-sizing: border-box
+}
+.toctogglecheckbox ~ ul {
+	display: none
+}
+.toctogglecheckbox:checked ~ ul {
+	display: block
+}
+.toctogglelabel {
+	cursor: pointer;
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	height: 50px;
+	z-index: 1
+}
+.client-js .content .toc .toctitle {
+	visibility: hidden;
+	background-position: right center;
+	font-weight: bold;
+	border-bottom: 0;
+	padding: 0.7em 3.5em 0.7em 3.5em
+}
+.client-js .content .toc .toctitle h2 {
+	font-family: -apple-system, 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Lato', 'Helvetica', 'Arial', sans-serif;
+	font-size: 1.125em
+}
+.client-js .content .toc .tocnumber {
+	display: none
+}
+.client-js .content .toc > ul {
+	font-size: 0.875em;
+	margin-left: 52px;
+	margin-right: 24px;
+	padding: 0 0 20px
+}
+.client-js .content .toc ul {
+	list-style: none
+}
+@media screen and (min-width: 720px) {
+	#toc {
+		display: table
+	}
+	#toc .toctitle {
+		visibility: visible
+	}
+}
 body {
 	font-family: -apple-system, 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Lato', 'Helvetica', 'Arial', sans-serif;
 	font-size: 100%;
@@ -1168,19 +1233,8 @@ body {
 		margin: 0 12px
 	}
 }
-.client-js .collapsible-block {
-	display: none
-}
-.client-js .collapsible-block.open-block {
-	display: block
-}
 .nomobile {
 	display: none !important
-}
-@media all and (min-width: 720px) {
-	.client-js[onclick] + .collapsible-block {
-		display: block
-	}
 }
 @supports (font: -apple-system-body) {
 	html {
@@ -1710,22 +1764,6 @@ table.ambox {
 	.header .search-box .search {
 		width: 23.4375em
 	}
-	.toc-mobile {
-		display: table;
-		visibility: visible;
-		position: relative;
-		font-size: 1.3em;
-		margin: 1em 0;
-		border: solid 1px transparent
-	}
-	.toc-mobile > h2 {
-		visibility: hidden;
-		font-family: -apple-system, 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Lato', 'Helvetica', 'Arial', sans-serif;
-		font-size: 0.875em;
-		font-weight: bold;
-		border-bottom: 0;
-		padding: 0.7em 0
-	}
 	.pre-content,
 	#mw-content-text > form,
 	.content,
@@ -1816,6 +1854,10 @@ a.external--reference {
 	background-image: url(/w/load.php?modules=skins.minerva.content.styles.images&image=a.external&variant=reference&format=rasterized&lang=en&skin=minerva);
 	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.content.styles.images&image=a.external&variant=reference&format=original&lang=en&skin=minerva)
 }
+.mw-ui-icon-minerva-toc:before {
+	background-image: url(/w/load.php?modules=skins.minerva.icons.images&image=toc&format=rasterized&lang=en&skin=minerva);
+	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.images&image=toc&format=original&lang=en&skin=minerva)
+}
 .mw-ui-icon-minerva-watch:before {
 	background-image: url(/w/load.php?modules=skins.minerva.icons.images&image=watch&format=rasterized&skin=minerva);
 	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.images&image=watch&format=original&skin=minerva)
@@ -1848,10 +1890,6 @@ a.external--reference {
 	background-image: url(/w/load.php?modules=skins.minerva.icons.images&image=language-switcher&variant=base20&format=rasterized&skin=minerva);
 	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.images&image=language-switcher&variant=base20&format=original&skin=minerva)
 }
-.mw-ui-icon-minerva-profile:before {
-	background-image: url(/w/load.php?modules=skins.minerva.icons.images&image=profile&format=rasterized&skin=minerva);
-	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.images&image=profile&format=original&skin=minerva)
-}
 .mw-ui-icon-minerva-clock:before {
 	background-image: url(/w/load.php?modules=skins.minerva.icons.images&image=clock&format=rasterized&skin=minerva);
 	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.images&image=clock&format=original&skin=minerva)
@@ -1878,4 +1916,19 @@ a.external--reference {
 .mw-ui-icon-search-progressive:before {
 	background-image: url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=search&variant=progressive&format=rasterized&skin=minerva);
 	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=search&variant=progressive&format=original&skin=minerva)
+}
+.mw-ui-icon-wikimedia-userAvatar-base20:before,
+.mw-ui-background-icon-userAvatar {
+	background-image: url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=userAvatar&format=rasterized&skin=minerva);
+	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=userAvatar&format=original&skin=minerva)
+}
+.oo-ui-image-invert.oo-ui-icon-userAvatar,
+.mw-ui-icon-userAvatar-invert:before {
+	background-image: url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=userAvatar&variant=invert&format=rasterized&skin=minerva);
+	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=userAvatar&variant=invert&format=original&skin=minerva)
+}
+.oo-ui-image-progressive.oo-ui-icon-userAvatar,
+.mw-ui-icon-userAvatar-progressive:before {
+	background-image: url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=userAvatar&variant=progressive&format=rasterized&skin=minerva);
+	background-image: linear-gradient(transparent, transparent), url(/w/load.php?modules=skins.minerva.icons.wikimedia&image=userAvatar&variant=progressive&format=original&skin=minerva)
 }
