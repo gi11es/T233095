@@ -1,4 +1,4 @@
-mw.loader.implement("ext.centralNotice.bannerHistoryLogger@0y11a6i", function($, jQuery, require, module) {
+mw.loader.implement("ext.centralNotice.bannerHistoryLogger@1bwdc", function($, jQuery, require, module) {
     (function() {
         var cn = mw.centralNotice,
             bhLogger, mixin = new cn.Mixin('bannerHistoryLogger'),
@@ -147,7 +147,7 @@ mw.loader.implement("ext.centralNotice.bannerHistoryLogger@0y11a6i", function($,
                 if (doNotTrackEnabled) {
                     return;
                 }
-                mw.loader.using(['ext.eventLogging', 'mediawiki.util', 'mediawiki.user']).done(function() {
+                mw.loader.using(['mediawiki.util', 'mediawiki.user']).done(function() {
                     var rateParam = mw.util.getParamValue('bannerHistoryLogRate'),
                         rate = rateParam !== null ? parseFloat(rateParam) : mixinParams.rate;
                     bhLogger.id = mw.user.generateRandomSessionId();
@@ -170,8 +170,7 @@ mw.loader.implement("ext.centralNotice.bannerHistoryLogger@0y11a6i", function($,
                 var deferred = $.Deferred();
                 if (doNotTrackEnabled) {
                     deferred.resolve();
-                    return deferred.
-                    promise();
+                    return deferred.promise();
                 }
                 readyToLogDeferredObj.done(function() {
                     if (logSent) {
@@ -189,7 +188,7 @@ mw.loader.implement("ext.centralNotice.bannerHistoryLogger@0y11a6i", function($,
         };
     }());
 });
-mw.loader.implement("ext.centralNotice.choiceData@0xb2fg1", function($, jQuery, require, module) {
+mw.loader.implement("ext.centralNotice.choiceData@xb2fg", function($, jQuery, require, module) {
     mw.centralNotice = (mw.centralNotice || {});
     mw.centralNotice.choiceData = [{
         "name": "C1920_enJP_dsk_FR",
@@ -441,7 +440,7 @@ mw.loader.implement("ext.centralNotice.choiceData@0xb2fg1", function($, jQuery, 
         "mixins": []
     }];
 });
-mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
+mw.loader.implement("ext.centralNotice.display@149pu", {
     "main": "index.js",
     "files": {
         "index.js": function(require, module) {
@@ -450,7 +449,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                     bannerLoadedDeferredObj, requestedBannerName = null,
                     MAX_RECORD_IMPRESSION_DELAY = 250,
                     IMPRESSION_EVENT_LOGGING_SCHEMA = 'CentralNoticeImpression',
-                    IMPRESSION_EVENT_LOGGING_SCHEMA_REVISION = 19108542;
+                    PREVIEW_STORAGE_KEY_PREFIX = 'cn-banner-preview-';
                 Mixin = function(name) {
                     this.name = name;
                 };
@@ -474,8 +473,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         }
                         handler = campaignMixins[mixinName][hookPropertyName];
                         if (typeof handler !== 'function') {
-                            mw.log.warn(hookPropertyName +
-                                ' for ' + mixinName + ' not a function.');
+                            mw.log.warn(hookPropertyName + ' for ' +
+                                mixinName + ' not a function.');
                             return;
                         }
                         handler(mixinParams);
@@ -509,10 +508,25 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                     cn.events.bannerLoaded = cn.bannerLoadedPromise;
                 }
 
+                function fetchOrRetrieveBanner() {
+                    var previewBannerContent, data = cn.internal.state.getData();
+                    if (data.preview) {
+                        $(function() {
+                            previewBannerContent = cn.kvStore.getItem(PREVIEW_STORAGE_KEY_PREFIX + data.banner, cn.kvStore.contexts.GLOBAL);
+                            if (previewBannerContent === null) {
+                                mw.log.warn('Could not retrieve preview banner ' + data.banner);
+                            } else {
+                                injectBannerHTML(previewBannerContent);
+                            }
+                        });
+                    } else {
+                        fetchBanner();
+                    }
+                }
+
                 function fetchBanner() {
-                    var data = cn.internal.state.getData(),
-                        urlBase = new mw.Uri(mw.config.get('wgCentralNoticeActiveBannerDispatcher')),
-                        urlQuery = ['banner=' + mw.Uri.encode(data.banner), 'uselang=' + mw.Uri.encode(data.uselang), 'debug=' + (!!data.debug).toString()];
+                    var data = cn.
+                    internal.state.getData(), urlBase = new mw.Uri(mw.config.get('wgCentralNoticeActiveBannerDispatcher')), urlQuery = ['banner=' + mw.Uri.encode(data.banner), 'uselang=' + mw.Uri.encode(data.uselang), 'debug=' + (!!data.debug).toString()];
                     if (data.campaign) {
                         urlQuery.unshift('campaign=' + mw.Uri.encode(data.campaign));
                     }
@@ -542,7 +556,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                     cn.recordImpressionDeferredObj.resolve();
                 }
 
-                function recordImpression() {
+                function
+                recordImpression() {
                     var timeout, timeoutHasRun = !1;
                     if (cn.recordImpressionDelayPromises.length === 0) {
                         reallyRecordImpression();
@@ -563,7 +578,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                 function reallyRecordImpression() {
                     var state = cn.internal.state,
                         random = Math.random(),
-                        url, dataCopy, elBaseUrl, elData, elQueryString;
+                        url, dataCopy;
                     if (random <= state.getData().recordImpressionSampleRate) {
                         url = new mw.Uri(mw.config.get('wgCentralBannerRecorder'));
                         dataCopy = state.getDataCopy(true);
@@ -571,19 +586,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         sendBeacon(url.toString());
                     }
                     if (random <= state.getData().impressionEventSampleRate) {
-                        elBaseUrl = mw.config.get('wgEventLoggingBaseUri');
-                        if (elBaseUrl) {
-                            dataCopy = dataCopy || state.getDataCopy(true);
-                            elData = {
-                                event: dataCopy,
-                                revision: IMPRESSION_EVENT_LOGGING_SCHEMA_REVISION,
-                                schema: IMPRESSION_EVENT_LOGGING_SCHEMA,
-                                webHost: location.hostname,
-                                wiki: mw.config.get('wgDBname')
-                            };
-                            elQueryString = encodeURIComponent(JSON.stringify(elData));
-                            sendBeacon(elBaseUrl + '?' + elQueryString + ';');
-                        }
+                        dataCopy = dataCopy || state.getDataCopy(true);
+                        mw.eventLog.logEvent(IMPRESSION_EVENT_LOGGING_SCHEMA, dataCopy);
                     }
                 }
 
@@ -594,14 +598,18 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         } catch (e) {}
                     } else {
                         setTimeout(function() {
-                            document.createElement('img').src = urlStr;
+                            document.createElement('img').
+                            src = urlStr;
                         }, 0);
                     }
                 }
 
                 function reallyChooseAndMaybeDisplay() {
-                    var chooser = cn.internal.
-                    chooser, bucketer = cn.internal.bucketer, state = cn.internal.state, hide = cn.internal.hide, campaign, banner;
+                    var chooser = cn.internal.chooser,
+                        bucketer = cn.internal.bucketer,
+                        state = cn.internal.state,
+                        hide = cn.internal.hide,
+                        campaign, banner;
                     state.setUp();
                     setUpDataProperty();
                     if (!chooser.choiceDataSeemsFresh(cn.choiceData)) {
@@ -710,8 +718,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         return cn.internal.state.isBannerShown();
                     },
                     setBannerLoadedButHidden: function(reason) {
-                        cn.internal.
-                        state.setBannerLoadedButHidden(reason);
+                        cn.internal.state.setBannerLoadedButHidden(reason);
                     },
                     setRecordImpressionSampleRate: function(rate) {
                         cn.internal.state.setRecordImpressionSampleRate(rate);
@@ -732,7 +739,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                             cn.internal.state.setUpForTestingBanner();
                             setUpDataProperty();
                             setUpBannerLoadedPromise();
-                            fetchBanner();
+                            fetchOrRetrieveBanner();
                         });
                     },
                     insertBanner: function(bannerJson) {
@@ -772,7 +779,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                     },
                     requestRecordImpressionDelay: function(promise) {
                         cn.recordImpressionDelayPromises.push(promise);
-                        cn.recordImpressionDeferredObj = cn.recordImpressionDeferredObj || $.Deferred();
+                        cn.recordImpressionDeferredObj = cn.recordImpressionDeferredObj ||
+                            $.Deferred();
                         return cn.recordImpressionDeferredObj.promise();
                     },
                     getDataProperty: function(prop) {
@@ -808,7 +816,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         UNKNOWN: 'unknown'
                     },
                     STATUSES = {
-                        CAMPAIGN_NOT_CHOSEN: new Status('campaign_not_chosen', 0),
+                        CAMPAIGN_NOT_CHOSEN: new Status(
+                            'campaign_not_chosen', 0),
                         CAMPAIGN_CHOSEN: new Status('campaign_chosen', 1),
                         BANNER_CANCELED: new Status('banner_canceled', 2),
                         NO_BANNER_AVAILABLE: new Status('no_banner_available', 3),
@@ -866,8 +875,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                 }
 
                 function setInitialData() {
-                    var urlParams = $.
-                    extend(state.urlParams, (new mw.Uri()).query), impressionEventSampleRateFromUrl;
+                    var urlParams = $.extend(state.urlParams, (new mw.Uri()).query),
+                        impressionEventSampleRateFromUrl;
                     state.data.anonymous = (mw.config.get('wgUserName') === null);
                     state.data.project = mw.config.get('wgNoticeProject');
                     state.data.db = mw.config.get('wgDBname');
@@ -880,8 +889,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                     state.data.randombanner = numericalUrlParamOrVal(urlParams.randombanner, Math.random());
                     state.data.recordImpressionSampleRate = numericalUrlParamOrVal(urlParams.recordImpressionSampleRate, mw.config.get('wgCentralNoticeSampleRate'));
                     impressionEventSampleRateFromUrl = numericalUrlParamOrVal(urlParams.impressionEventSampleRate, null);
-                    if (
-                        impressionEventSampleRateFromUrl !== null) {
+                    if (impressionEventSampleRateFromUrl !== null) {
                         state.data.impressionEventSampleRate = impressionEventSampleRateFromUrl;
                         impressionEventSampleRateOverridden = !0;
                     } else {
@@ -899,6 +907,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                     state.data.campaign = state.urlParams.campaign;
                     state.data.banner = state.urlParams.banner;
                     state.data.testingBanner = !0;
+                    state.data.preview = (state.urlParams.preview !== undefined);
                 }
 
                 function setStatus(s, reason) {
@@ -1027,7 +1036,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         state.data.recordImpressionSampleRate = rate;
                     },
                     setImpressionEventSampleRate: function(rate) {
-                        if (!impressionEventSampleRateOverridden) {
+                        if (!
+                            impressionEventSampleRateOverridden) {
                             state.data.impressionEventSampleRate = rate;
                         }
                     },
@@ -1074,15 +1084,15 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
 
                 function makeFilteredChoiceData(choiceData, country, anon, device) {
                     var i, campaign, j, banner, keepCampaign, filteredChoiceData = [];
-                    for (i = 0; i < choiceData.length; i++) {
+                    for (i = 0; i < choiceData
+                        .length; i++) {
                         campaign = choiceData[i];
                         keepCampaign = !1;
                         if (campaign.geotargeted && (campaign.countries.indexOf(country) === -1)) {
                             continue;
                         }
                         for (j = 0; j < campaign.banners.length; j++) {
-                            banner = campaign.
-                            banners[j];
+                            banner = campaign.banners[j];
                             if (anon && !banner.display_anon) {
                                 continue;
                             }
@@ -1155,7 +1165,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                 function makePossibleBanners(campaign, bucket, anon, device) {
                     var i, campaignName, banner, possibleBanners = [];
                     campaignName = campaign.name;
-                    for (i = 0; i < campaign.banners.length; i++) {
+                    for (
+                        i = 0; i < campaign.banners.length; i++) {
                         banner = campaign.banners[i];
                         if (bucket !== banner.bucket) {
                             continue;
@@ -1166,8 +1177,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         if (!anon && !banner.display_account) {
                             continue;
                         }
-                        if (
-                            banner.devices.indexOf(device) === -1) {
+                        if (banner.devices.indexOf(device) === -1) {
                             continue;
                         }
                         possibleBanners.push(banner);
@@ -1210,8 +1220,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         for (i = 0; i < choiceData.length; i++) {
                             campaign = choiceData[i];
                             campaignEndDatePlusLeeway = new Date();
-                            campaignEndDatePlusLeeway.setTime((campaign.end * 1000) + (
-                                CAMPAIGN_STALENESS_LEEWAY * 60000));
+                            campaignEndDatePlusLeeway.setTime((campaign.end * 1000) + (CAMPAIGN_STALENESS_LEEWAY * 60000));
                             if (campaignEndDatePlusLeeway < now) {
                                 return false;
                             }
@@ -1236,7 +1245,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                     },
                     requestBanner: function(campaign, bucket, anon, device, requestedBannerName) {
                         var i, possibleBanner, possibleBanners = makePossibleBanners(campaign, bucket, anon, device);
-                        for (i = 0; i < possibleBanners.length; i++) {
+                        for (i = 0; i <
+                            possibleBanners.length; i++) {
                             possibleBanner = possibleBanners[i];
                             if (possibleBanner.name === requestedBannerName) {
                                 return possibleBanner;
@@ -1287,7 +1297,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                 }
 
                 function possiblyLoadAndMigrateLegacyBuckets() {
-                    var cookieVal = $.cookie(LEGACY_COOKIE);
+                    var
+                        cookieVal = $.cookie(LEGACY_COOKIE);
                     if (cookieVal) {
                         buckets = parseSerializedBuckets(cookieVal);
                         storeBuckets();
@@ -1322,12 +1333,12 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
 
                 function retrieveProcessAndGet() {
                     var campaignName = campaign.name,
-                        campaignStartDate, bucket, bucketEndDate, retrievedBucketEndDate, val, extension = mw.config.get('wgCentralNoticePerCampaignBucketExtension'),
+                        campaignStartDate, bucket, bucketEndDate, retrievedBucketEndDate, val,
+                        extension = mw.config.get('wgCentralNoticePerCampaignBucketExtension'),
                         now = new Date(),
                         bucketsModified = !1;
                     campaignStartDate = new Date();
-                    campaignStartDate.setTime(campaign.start *
-                        1000);
+                    campaignStartDate.setTime(campaign.start * 1000);
                     bucketEndDate = new Date();
                     bucketEndDate.setTime(campaign.end * 1000);
                     bucketEndDate.setUTCDate(bucketEndDate.getUTCDate() + extension);
@@ -1357,7 +1368,8 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         bucketEndDate = new Date();
                         bucketEndDate.setTime(buckets[campaignName].end * 1000);
                         if (bucketEndDate < now) {
-                            delete buckets[campaignName];
+                            delete
+                            buckets[campaignName];
                             bucketsModified = !0;
                         }
                     }
@@ -1421,8 +1433,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
                         now = new Date().getTime() / 1000;
                         if (now < hideData.created + (durations[hideData.reason] || MAX_CUSTOM_HIDE_DURATION)) {
                             shouldHide = !0;
-                            reason =
-                                hideData.reason;
+                            reason = hideData.reason;
                         }
                     },
                     shouldHide: function() {
@@ -1471,7 +1482,7 @@ mw.loader.implement("ext.centralNotice.display@0mtrxhx", {
         "@media print{#centralNotice{display:none}}.cn-closeButton{display:inline-block;zoom:1;background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUBAMAAAB/pwA+AAAAElBMVEUAAAAQEBDPz88AAABAQEDv7+9oe1vvAAAABnRSTlMA3rLe3rJS22KzAAAARElEQVQI12PAAUIUQCSTK5BwFgIxFU1AhKECUFAYKAAioXwwBeZChMGCEGGQIFQYJohgIhQgtCEMQ7ECYTHCOciOxA4AADgJTXIb9s8AAAAASUVORK5CYII=) no-repeat;background:url(/w/extensions/CentralNotice/resources/ext.centralNotice.display/images/close.png?8e3d8) no-repeat!ie;width:20px;height:20px;text-indent:20px;white-space:nowrap;overflow:hidden}"
     ]
 });
-mw.loader.implement("ext.centralNotice.geoIP@1k62gia", function($, jQuery, require, module) {
+mw.loader.implement("ext.centralNotice.geoIP@1k62g", function($, jQuery, require, module) {
     (function() {
         var COOKIE_NAME = 'GeoIP',
             geoPromise;
@@ -1509,8 +1520,8 @@ mw.loader.implement("ext.centralNotice.geoIP@1k62gia", function($, jQuery, requi
                 var cookieValue = $.cookie(COOKIE_NAME),
                     geo, lookupModule;
                 if (cookieValue) {
-                    geo
-                        = parseCookieValue(cookieValue);
+                    geo =
+                        parseCookieValue(cookieValue);
                     if (geo) {
                         geoPromise = $.Deferred().resolve(geo).promise();
                         return;
@@ -1539,7 +1550,7 @@ mw.loader.implement("ext.centralNotice.geoIP@1k62gia", function($, jQuery, requi
         });
     }());
 });
-mw.loader.implement("ext.centralNotice.impressionDiet@1kxxq34", function($, jQuery, require, module) {
+mw.loader.implement("ext.centralNotice.impressionDiet@1kxxq", function($, jQuery, require, module) {
     (function() {
         'use strict';
         var identifier, multiStorageOption, cn = mw.centralNotice,
@@ -1574,8 +1585,7 @@ mw.loader.implement("ext.centralNotice.impressionDiet@1kxxq34", function($, jQue
                     counts.seenThisCycle = 0;
                 }
             }
-            if (
-                counts.seenThisCycle < mixinParams.maximumSeen) {
+            if (counts.seenThisCycle < mixinParams.maximumSeen) {
                 if (counts.skippedThisCycle < mixinParams.skipInitial) {
                     hide = 'waitimps';
                     counts.skippedThisCycle += 1;
@@ -1663,7 +1673,7 @@ mw.loader.implement("ext.centralNotice.impressionDiet@1kxxq34", function($, jQue
         cn.registerCampaignMixin(mixin);
     }());
 });
-mw.loader.implement("ext.centralNotice.kvStore@0sgn2qe", {
+mw.loader.implement("ext.centralNotice.kvStore@sgn2q", {
     "main": "index.js",
     "files": {
         "index.js": function(require, module) {
@@ -1943,7 +1953,7 @@ mw.loader.implement("ext.centralNotice.kvStore@0sgn2qe", {
         }
     }
 });
-mw.loader.implement("ext.centralNotice.largeBannerLimit@1a2sg8p", function($, jQuery, require, module) {
+mw.loader.implement("ext.centralNotice.largeBannerLimit@1a2sg", function($, jQuery, require, module) {
     (function() {
         'use strict';
         var identifier, days, multiStorageOption, cn = mw.centralNotice,
@@ -2026,7 +2036,7 @@ mw.loader.implement("ext.centralNotice.largeBannerLimit@1a2sg8p", function($, jQ
         cn.registerCampaignMixin(mixin);
     }());
 });
-mw.loader.implement("ext.centralNotice.legacySupport@0q9ylxz", function($, jQuery, require, module) {
+mw.loader.implement("ext.centralNotice.legacySupport@q9ylx", function($, jQuery, require, module) {
     (function() {
         var cn = mw.centralNotice,
             mixin = new cn.Mixin('legacySupport');
@@ -2041,7 +2051,7 @@ mw.loader.implement("ext.centralNotice.legacySupport@0q9ylxz", function($, jQuer
         cn.registerCampaignMixin(mixin);
     }());
 });
-mw.loader.implement("ext.centralNotice.startUp@0cw8q4o", {
+mw.loader.implement("ext.centralNotice.startUp@cw8q4", {
     "main": "index.js",
     "files": {
         "index.js": function(require, module) {
@@ -2182,7 +2192,7 @@ mw.loader.implement("ext.centralNotice.startUp@0cw8q4o", {
         }
     }
 });
-mw.loader.implement("ext.centralauth.centralautologin@0f63rmk", {
+mw.loader.implement("ext.centralauth.centralautologin@f63rm", {
     "main": "ext.centralauth.centralautologin.js",
     "files": {
         "ext.centralauth.centralautologin.js": function(require, module) {
@@ -2232,7 +2242,7 @@ mw.loader.implement("ext.centralauth.centralautologin@0f63rmk", {
         "@-webkit-keyframes centralAuthPPersonalAnimation{0%{opacity:0;-webkit-transform:translateY(-20px)}100%{opacity:1;-webkit-transform:translateY(0)}}@-moz-keyframes centralAuthPPersonalAnimation{0%{opacity:0;-moz-transform:translateY(-20px)}100%{opacity:1;-moz-transform:translateY(0)}}@-o-keyframes centralAuthPPersonalAnimation{0%{opacity:0;-o-transform:translateY(-20px)}100%{opacity:1;-o-transform:translateY(0)}}@keyframes centralAuthPPersonalAnimation{0%{opacity:0;transform:translateY(-20px)}100%{opacity:1;transform:translateY(0)}}.centralAuthPPersonalAnimation{-webkit-animation-duration:1s;-moz-animation-duration:1s;-o-animation-duration:1s;animation-duration:1s;-webkit-animation-fill-mode:both;-moz-animation-fill-mode:both;-o-animation-fill-mode:both;animation-fill-mode:both;-webkit-animation-name:centralAuthPPersonalAnimation;-moz-animation-name:centralAuthPPersonalAnimation;-o-animation-name:centralAuthPPersonalAnimation;animation-name:centralAuthPPersonalAnimation}"
     ]
 });
-mw.loader.implement("ext.eventLogging@1qxckkx", {
+mw.loader.implement("ext.eventLogging@1g5do", {
     "main": "subscriber.js",
     "files": {
         "subscriber.js": function(require, module) {
@@ -2263,19 +2273,17 @@ mw.loader.implement("ext.eventLogging@1qxckkx", {
         "core.js": function(require, module) {
             (function() {
                 'use strict';
-                var core, baseUrl, debugMode;
-                baseUrl = require('./data.json').baseUrl;
+                var core, debugMode, config = require('./data.json');
                 debugMode = Number(mw.user.options.get('eventlogging-display-web')) === 1;
                 core = {
                     maxUrlSize: 2000,
                     getRevision: function(schemaName) {
-                        return mw.config.get('wgEventLoggingSchemaRevision')[schemaName] || -1;
+                        return config.schemaRevision[schemaName] || -1;
                     },
                     prepare: function(schemaName, eventData) {
                         return {
                             event: eventData,
-                            revision: core.
-                            getRevision(schemaName),
+                            revision: core.getRevision(schemaName),
                             schema: schemaName,
                             webHost: location.hostname,
                             wiki: mw.config.get('wgDBname')
@@ -2283,7 +2291,7 @@ mw.loader.implement("ext.eventLogging@1qxckkx", {
                     },
                     makeBeaconUrl: function(data) {
                         var queryString = encodeURIComponent(JSON.stringify(data));
-                        return baseUrl + '?' + queryString + ';';
+                        return config.baseUrl + '?' + queryString + ';';
                     },
                     checkUrlSize: function(schemaName, url) {
                         var message;
@@ -2294,7 +2302,7 @@ mw.loader.implement("ext.eventLogging@1qxckkx", {
                             return message;
                         }
                     },
-                    sendBeacon: (/1|yes/.test(navigator.doNotTrack) || window.doNotTrack === '1' || !baseUrl) ? function() {} : navigator.sendBeacon ? function(url) {
+                    sendBeacon: (/1|yes/.test(navigator.doNotTrack) || window.doNotTrack === '1' || !config.baseUrl) ? function() {} : navigator.sendBeacon ? function(url) {
                         try {
                             navigator.sendBeacon(url);
                         } catch (e) {}
@@ -2313,7 +2321,8 @@ mw.loader.implement("ext.eventLogging@1qxckkx", {
                             }
                             deferred.resolveWith(event, [event]);
                         } else {
-                            deferred.rejectWith(event, [event, sizeError]);
+                            deferred.rejectWith(
+                                event, [event, sizeError]);
                         }
                         return deferred.promise();
                     },
@@ -2335,6 +2344,13 @@ mw.loader.implement("ext.eventLogging@1qxckkx", {
                         return this.randomTokenMatch(populationSize, mw.user.getPageviewToken());
                     }
                 };
+                if (window.QUnit) {
+                    core.setOptionsForTest = function(opts) {
+                        var oldConfig = config;
+                        config = $.extend({}, config, opts);
+                        return oldConfig;
+                    };
+                }
                 module.exports = core;
             }());
         },
@@ -2347,25 +2363,98 @@ mw.loader.implement("ext.eventLogging@1qxckkx", {
                         throw new Error('name is required');
                     }
                     this.name = name;
-                    this.populationSize = samplingRate !== undefined ? (1 / samplingRate) : 1;
+                    this.populationSize =
+                        samplingRate !== undefined ? (1 / samplingRate) : 1;
                     this.defaults = defaults || {};
                 }
-                Schema.prototype.log =
-                    function(data, samplingRate) {
-                        var pop = samplingRate !== undefined ? (1 / samplingRate) : this.populationSize;
-                        if (mw.eventLog.inSample(pop)) {
-                            mw.track('event.' + this.name, $.extend({}, this.defaults, data));
-                        }
-                    };
+                Schema.prototype.log = function(data, samplingRate) {
+                    var pop = samplingRate !== undefined ? (1 / samplingRate) : this.populationSize;
+                    if (mw.eventLog.inSample(pop)) {
+                        mw.track('event.' + this.name, $.extend({}, this.defaults, data));
+                    }
+                };
                 module.exports = Schema;
             }());
         },
         "data.json": {
-            "baseUrl": "https://en.wikipedia.org/beacon/event"
+            "baseUrl": "https://en.wikipedia.org/beacon/event",
+            "schemaRevision": {
+                "CentralNoticeBannerHistory": 19079897,
+                "CentralNoticeImpression": 19108542,
+                "MediaViewer": 10867062,
+                "MultimediaViewerNetworkPerformance": 15573630,
+                "MultimediaViewerDuration": 10427980,
+                "MultimediaViewerAttribution": 9758179,
+                "MultimediaViewerDimensions": 10014238,
+                "Popups": 17807993,
+                "VirtualPageView": 17780078,
+                "GuidedTourGuiderImpression": 8694395,
+                "GuidedTourGuiderHidden": 8690549,
+                "GuidedTourButtonClick": 13869649,
+                "GuidedTourInternalLinkActivation": 8690553,
+                "GuidedTourExternalLinkActivation": 8690560,
+                "GuidedTourExited": 8690566,
+                "MobileWebSearch": 12054448,
+                "WebClientError": 18340282,
+                "MobileWebShareButton": 18923688,
+                "GettingStartedRedirectImpression": 7355552,
+                "SignupExpCTAButtonClick": 8965028,
+                "SignupExpCTAImpression": 8965023,
+                "SignupExpPageLinkClick": 8965014,
+                "TaskRecommendation": 9266319,
+                "TaskRecommendationClick": 9266317,
+                "TaskRecommendationImpression": 9266226,
+                "TaskRecommendationLightbulbClick": 9433256,
+                "TwoColConflictConflict": 18155295,
+                "Print": 17630514,
+                "ReadingDepth": 18201205,
+                "EditAttemptStep": 19364181,
+                "VisualEditorFeatureUse": 18457512,
+                "CompletionSuggestions": 13630018,
+                "SearchSatisfaction": 19240639,
+                "TestSearchSatisfaction2": 19250889,
+                "SearchSatisfactionErrors": 17181648,
+                "Search": 14361785,
+                "ChangesListHighlights": 16484288,
+                "ChangesListFilterGrouping": 17008168,
+                "RecentChangesTopLinks": 16732249,
+                "InputDeviceDynamics": 17687647,
+                "MobileWebUIActionsTracking": 19230467,
+                "CitationUsage": 18810892,
+                "CitationUsagePageLoad": 18502712,
+                "WMDEBannerEvents": 18437830,
+                "WMDEBannerSizeIssue": 18193993,
+                "WikidataCompletionSearchClicks": 18665070,
+                "UserFeedback": 18903446,
+                "UniversalLanguageSelector": 17799034,
+                "ContentTranslation": 18999884,
+                "ContentTranslationCTA": 16017678,
+                "ContentTranslationAbuseFilter": 18472730,
+                "ContentTranslationSuggestion": 19004928,
+                "ContentTranslationError": 11767097,
+                "QuickSurveysResponses": 18397510,
+                "QuickSurveyInitiation": 18397507,
+                "AdvancedSearchRequest": 18227136,
+                "ArticleCreationWorkflow": 17145434,
+                "TemplateWizard": 18374327,
+                "EchoInteraction": 15823738,
+                "NavigationTiming": 19157653,
+                "SaveTiming": 15396492,
+                "ResourceTiming": 18358918,
+                "CentralNoticeTiming": 18418286,
+                "CpuBenchmark": 18436118,
+                "ServerTiming": 18622171,
+                "RUMSpeedIndex": 18813781,
+                "PaintTiming": 19000009,
+                "ElementTiming": 19315761,
+                "LayoutJank": 18935150,
+                "FeaturePolicyViolation": 19120697,
+                "ExternalGuidance": 18903973
+            }
         }
     }
 });
-mw.loader.implement("ext.navigationTiming@1s7ja55", {
+mw.loader.implement("ext.navigationTiming@1s7ja", {
     "main": "ext.navigationTiming.js",
     "files": {
         "ext.navigationTiming.js": function(require, module) {
@@ -3121,7 +3210,7 @@ mw.loader.implement("ext.navigationTiming@1s7ja55", {
         }
     }
 });
-mw.loader.implement("ext.wikimediaEvents@0905391", function($, jQuery, require, module) {
+mw.loader.implement("ext.wikimediaEvents@90539", function($, jQuery, require, module) {
     (function() {
         mw.trackSubscribe('wikimedia.event.', function(topic, event) {
             mw.track(topic.replace(/^wikimedia\./, ''), event);
@@ -3689,7 +3778,7 @@ mw.loader.implement("ext.wikimediaEvents@0905391", function($, jQuery, require, 
         });
     }(mw.config, mw.user, mw.experiments, mw.eventLog.Schema));
 });
-mw.loader.implement("ext.quicksurveys.init@0whcbmy", function($, jQuery, require, module) {
+mw.loader.implement("ext.quicksurveys.init@whcbm", function($, jQuery, require, module) {
     (function() {
         var isMainPage = mw.config.get('wgIsMainPage'),
             isArticle = mw.config.get('wgIsArticle'),
@@ -3709,7 +3798,7 @@ mw.loader.implement("ext.quicksurveys.init@0whcbmy", function($, jQuery, require
         }
     }());
 });
-mw.loader.implement("ext.quicksurveys.lib@0lq9sbt", function($, jQuery, require, module) {
+mw.loader.implement("ext.quicksurveys.lib@lq9sb", function($, jQuery, require, module) {
     (function() {
         var survey, availableSurveys = [],
             $window = $(window),
@@ -3909,7 +3998,7 @@ mw.loader.implement("ext.quicksurveys.lib@0lq9sbt", function($, jQuery, require,
 }, {
     "css": [".ext-quick-survey-panel,.ext-qs-loader-bar{width:auto;background-color:#eaecf0} .ext-qs-loader-bar{display:block;height:100px;margin-left:1.4em;clear:right;float:right;background-color:#eaecf0}.ext-qs-loader-bar.mw-ajax-loader{top:0}@media all and (min-width:720px){.ext-qs-loader-bar,.ext-quick-survey-panel{margin-left:1.4em;width:300px;clear:right;float:right}}"]
 });
-mw.loader.implement("ext.relatedArticles.readMore.bootstrap@0ychxqy", {
+mw.loader.implement("ext.relatedArticles.readMore.bootstrap@ychxq", {
     "main": "index.js",
     "files": {
         "index.js": function(require, module) {
@@ -3938,7 +4027,8 @@ mw.loader.implement("ext.relatedArticles.readMore.bootstrap@0ychxqy", {
                 }
 
                 function showReadMore() {
-                    $window.on('scroll', debouncedLoad);
+                    $window.on(
+                        'scroll', debouncedLoad);
                     loadRelatedArticles();
                 }
                 $(showReadMore);
@@ -3951,7 +4041,7 @@ mw.loader.implement("ext.relatedArticles.readMore.bootstrap@0ychxqy", {
         }
     }
 });
-mw.loader.implement("ext.relatedArticles.readMore.gateway@00vbs1t", function($, jQuery, require, module) {
+mw.loader.implement("ext.relatedArticles.readMore.gateway@vbs1t", function($, jQuery, require, module) {
     (function() {
         mw.relatedPages = {};
 
@@ -4016,7 +4106,7 @@ mw.loader.implement("ext.relatedArticles.readMore.gateway@00vbs1t", function($, 
         mw.relatedPages.RelatedPagesGateway = RelatedPagesGateway;
     }());
 });
-mw.loader.implement("jquery@1nollmt", function($, jQuery, require, module) {
+mw.loader.implement("jquery@1noll", function($, jQuery, require, module) {
     (function(global, factory) {
         "use strict";
         if (typeof module === "object" && typeof module.exports === "object") {
@@ -10653,16 +10743,17 @@ mw.loader.implement("jquery@1nollmt", function($, jQuery, require, module) {
         return jQuery;
     });
 });
-mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
+mw.loader.implement("oojs@1czp8", function($, jQuery, require, module) {
     (function(global) {
         'use strict';
-        var oo = {},
-            hasOwn = oo.hasOwnProperty,
-            toString = oo.toString;
-        oo.initClass = function(fn) {
+        var OO = {},
+            hasOwn = OO.hasOwnProperty,
+            slice = Array.prototype.slice,
+            toString = OO.toString;
+        OO.initClass = function(fn) {
             fn.static = fn.static || {};
         };
-        oo.inheritClass = function(targetFn, originFn) {
+        OO.inheritClass = function(targetFn, originFn) {
             var targetConstructor;
             if (!originFn) {
                 throw new Error('inheritClass: Origin is not a function (actually ' + originFn + ')');
@@ -10680,21 +10771,21 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                     configurable: !0
                 }
             });
-            oo.initClass(originFn);
+            OO.initClass(originFn);
             targetFn.static = Object.create(originFn.static);
         };
-        oo.mixinClass = function(targetFn, originFn) {
+        OO.mixinClass = function(targetFn, originFn) {
             var key;
             if (!originFn) {
                 throw new Error('mixinClass: Origin is not a function (actually ' + originFn + ')');
             }
             for (key in originFn.prototype) {
-                if (key !== 'constructor' && hasOwn.call(
-                        originFn.prototype, key)) {
+                if (key !==
+                    'constructor' && hasOwn.call(originFn.prototype, key)) {
                     targetFn.prototype[key] = originFn.prototype[key];
                 }
             }
-            oo.initClass(targetFn);
+            OO.initClass(targetFn);
             if (originFn.static) {
                 for (key in originFn.static) {
                     if (hasOwn.call(originFn.static, key)) {
@@ -10702,13 +10793,13 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                     }
                 }
             } else {
-                oo.initClass(originFn);
+                OO.initClass(originFn);
             }
         };
-        oo.isSubclass = function(testFn, baseFn) {
+        OO.isSubclass = function(testFn, baseFn) {
             return testFn === baseFn || testFn.prototype instanceof baseFn;
         };
-        oo.getProp = function(obj) {
+        OO.getProp = function(obj) {
             var i, retval = obj;
             for (i = 1; i < arguments.length; i++) {
                 if (retval === undefined || retval === null) {
@@ -10718,7 +10809,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             }
             return retval;
         };
-        oo.setProp = function(obj) {
+        OO.setProp = function(obj) {
             var i, prop = obj;
             if (Object(obj) !== obj || arguments.length < 2) {
                 return;
@@ -10734,14 +10825,13 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             }
             prop[arguments[arguments.length - 2]] = arguments[arguments.length - 1];
         };
-        oo.deleteProp = function(obj) {
+        OO.deleteProp = function(obj) {
             var i, prop = obj,
                 props = [prop];
             if (Object(obj) !== obj || arguments.length < 2) {
                 return;
             }
-            for (i = 1; i < arguments.length -
-                1; i++) {
+            for (i = 1; i < arguments.length - 1; i++) {
                 if (prop[arguments[i]] === undefined || Object(prop[arguments[i]]) !== prop[arguments[i]]) {
                     return;
                 }
@@ -10749,11 +10839,11 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 props.push(prop);
             }
             delete prop[arguments[i]];
-            while (props.length > 1 && (prop = props.pop()) && oo.isPlainObject(prop) && !Object.keys(prop).length) {
+            while (props.length > 1 && (prop = props.pop()) && OO.isPlainObject(prop) && !Object.keys(prop).length) {
                 delete props[props.length - 1][arguments[props.length]];
             }
         };
-        oo.cloneObject = function(origin) {
+        OO.cloneObject = function(origin) {
             var key, r;
             r = Object.create(origin.constructor.prototype);
             for (key in origin) {
@@ -10763,7 +10853,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             }
             return r;
         };
-        oo.getObjectValues = function(obj) {
+        OO.getObjectValues = function(obj) {
             var key, values;
             if (obj !== Object(obj)) {
                 throw new TypeError('Called on non-object');
@@ -10776,7 +10866,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             }
             return values;
         };
-        oo.binarySearch = function(arr, searchFunc, forInsertion) {
+        OO.binarySearch = function(arr, searchFunc, forInsertion) {
             var mid, cmpResult, left = 0,
                 right = arr.length;
             while (left < right) {
@@ -10792,8 +10882,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             }
             return forInsertion ? right : null;
         };
-        oo.compare = function(a, b,
-            asymmetrical) {
+        OO.compare = function(a, b, asymmetrical) {
             var aValue, bValue, aType, bType, k;
             if (a === b) {
                 return true;
@@ -10811,13 +10900,13 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 bValue = b[k];
                 aType = typeof aValue;
                 bType = typeof bValue;
-                if (aType !== bType || ((aType === 'string' || aType === 'number' || aType === 'boolean') && aValue !== bValue) || (aValue === Object(aValue) && !oo.compare(aValue, bValue, true))) {
+                if (aType !== bType || ((aType === 'string' || aType === 'number' || aType === 'boolean') && aValue !== bValue) || (aValue === Object(aValue) && !OO.compare(aValue, bValue, true))) {
                     return false;
                 }
             }
-            return asymmetrical ? true : oo.compare(b, a, true);
+            return asymmetrical ? true : OO.compare(b, a, true);
         };
-        oo.copy = function(source, leafCallback, nodeCallback) {
+        OO.copy = function(source, leafCallback, nodeCallback) {
             var key, destination;
             if (nodeCallback) {
                 destination = nodeCallback(source);
@@ -10830,22 +10919,22 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             } else if (source && typeof source.clone === 'function') {
                 return leafCallback ? leafCallback(source.clone()) : source.clone();
             } else if (source && typeof source.cloneNode === 'function') {
-                return leafCallback ? leafCallback(source.cloneNode(true)) : source
-                    .cloneNode(true);
-            } else if (oo.isPlainObject(source)) {
+                return leafCallback ? leafCallback(
+                    source.cloneNode(true)) : source.cloneNode(true);
+            } else if (OO.isPlainObject(source)) {
                 destination = {};
             } else {
                 return leafCallback ? leafCallback(source) : source;
             }
             for (key in source) {
-                destination[key] = oo.copy(source[key], leafCallback, nodeCallback);
+                destination[key] = OO.copy(source[key], leafCallback, nodeCallback);
             }
             return destination;
         };
-        oo.getHash = function(val) {
-            return JSON.stringify(val, oo.getHash.keySortReplacer);
+        OO.getHash = function(val) {
+            return JSON.stringify(val, OO.getHash.keySortReplacer);
         };
-        oo.getHash.keySortReplacer = function(key, val) {
+        OO.getHash.keySortReplacer = function(key, val) {
             var normalized, keys, i, len;
             if (val && typeof val.getHashObject === 'function') {
                 val = val.getHashObject();
@@ -10863,7 +10952,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 return val;
             }
         };
-        oo.unique = function(arr) {
+        OO.unique = function(arr) {
             return arr.reduce(function(result, current) {
                 if (result.indexOf(current) === -1) {
                     result.push(current);
@@ -10871,7 +10960,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 return result;
             }, []);
         };
-        oo.simpleArrayUnion = function() {
+        OO.simpleArrayUnion = function() {
             var i, ilen, arr, j, jlen, obj = {},
                 result = [];
             for (i = 0, ilen = arguments.length; i < ilen; i++) {
@@ -10900,18 +10989,18 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             }
             return result;
         }
-        oo.simpleArrayIntersection = function(a, b) {
+        OO.simpleArrayIntersection = function(a, b) {
             return simpleArrayCombine(a, b, true);
         };
-        oo.simpleArrayDifference = function(a, b) {
+        OO.simpleArrayDifference = function(a, b) {
             return simpleArrayCombine(a, b, false);
         };
-        oo.isPlainObject = $.isPlainObject;
+        OO.isPlainObject = $.isPlainObject;
         (function() {
-            oo.EventEmitter = function OoEventEmitter() {
+            OO.EventEmitter = function OoEventEmitter() {
                 this.bindings = {};
             };
-            oo.initClass(oo.EventEmitter);
+            OO.initClass(OO.EventEmitter);
 
             function validateMethod(method, context) {
                 if (typeof method === 'string') {
@@ -10935,7 +11024,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 }
                 bindings.push(binding);
             }
-            oo.EventEmitter.prototype.on = function(event, method, args, context) {
+            OO.EventEmitter.prototype.on = function(event, method, args, context) {
                 validateMethod(method, context);
                 addBinding(this, event, {
                     method: method,
@@ -10945,7 +11034,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 });
                 return this;
             };
-            oo.EventEmitter.prototype.once = function(event, listener) {
+            OO.EventEmitter.prototype.once = function(event, listener) {
                 validateMethod(listener);
                 addBinding(this, event, {
                     method: listener,
@@ -10955,7 +11044,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 });
                 return this;
             };
-            oo.EventEmitter.prototype.off = function(event, method, context) {
+            OO.EventEmitter.prototype.off = function(event, method, context) {
                 var i, bindings;
                 if (arguments.length === 1) {
                     delete this.bindings[event];
@@ -10980,31 +11069,69 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 }
                 return this;
             };
-            oo.EventEmitter.prototype.emit = function(event) {
-                var args = [],
-                    i, len, binding, bindings, method;
-                if (hasOwn.call(this.bindings, event)) {
-                    bindings = this.bindings[event].slice();
-                    for (i = 1, len = arguments.length; i < len; i++) {
-                        args.push(arguments[i]);
-                    }
-                    for (i = 0, len = bindings.length; i < len; i++) {
-                        binding = bindings[i];
-                        if (typeof binding.method === 'string') {
-                            method = binding.context[binding.method];
-                        } else {
-                            method = binding.method;
-                        }
-                        if (binding.once) {
-                            this.off(event, method);
-                        }
-                        method.apply(binding.context, binding.args ? binding.args.concat(args) : args);
-                    }
-                    return true;
+            OO.EventEmitter.prototype.emit = function(event) {
+                var bindings, args, i, binding, method;
+                if (!hasOwn.call(this.bindings, event)) {
+                    return false;
                 }
-                return false;
+                bindings = this.bindings[event].slice();
+                args = slice.call(arguments, 1);
+                for (i = 0; i < bindings.length; i++) {
+                    binding = bindings[i];
+                    if (typeof binding.method === 'string') {
+                        method = binding.context[binding.method];
+                    } else {
+                        method = binding.method;
+                    }
+                    if (binding.once) {
+                        this.off(event, method);
+                    }
+                    try {
+                        method.apply(binding.context, binding.args ? binding.args.concat(args) : args);
+                    } catch (e) {
+                        setTimeout((function(error) {
+                            throw error;
+                        }).bind(null, e));
+                    }
+                }
+                return true;
             };
-            oo.EventEmitter.prototype.connect = function(context, methods) {
+            OO.EventEmitter.prototype.emitThrow = function(event) {
+                var bindings, args, i, binding, method, firstError;
+                if (!hasOwn.call(this.bindings, event)) {
+                    return false;
+                }
+                bindings = this.bindings[event].slice();
+                args = slice.call(arguments, 1);
+                for (i = 0; i < bindings.length; i++) {
+                    binding = bindings[i];
+                    if (typeof binding.method === 'string') {
+                        method = binding.context[binding.method];
+                    } else {
+                        method = binding.
+                        method;
+                    }
+                    if (binding.once) {
+                        this.off(event, method);
+                    }
+                    try {
+                        method.apply(binding.context, binding.args ? binding.args.concat(args) : args);
+                    } catch (e) {
+                        if (firstError === undefined) {
+                            firstError = e;
+                        } else {
+                            setTimeout((function(error) {
+                                throw error;
+                            }).bind(null, e));
+                        }
+                    }
+                }
+                if (firstError !== undefined) {
+                    throw firstError;
+                }
+                return true;
+            };
+            OO.EventEmitter.prototype.connect = function(context, methods) {
                 var method, args, event;
                 for (event in methods) {
                     method = methods[event];
@@ -11018,13 +11145,12 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 }
                 return this;
             };
-            oo.EventEmitter.prototype.disconnect = function(context, methods) {
+            OO.EventEmitter.prototype.disconnect = function(context, methods) {
                 var i, event, method, bindings;
                 if (methods) {
                     for (event in methods) {
                         method = methods[event];
-                        if (Array.isArray(
-                                method)) {
+                        if (Array.isArray(method)) {
                             method = method[0];
                         }
                         this.off(event, method, context);
@@ -11044,32 +11170,32 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             };
         }());
         (function() {
-            oo.EmitterList = function OoEmitterList() {
-                this.items = [];
-                this.aggregateItemEvents = {};
-            };
+            OO
+                .EmitterList = function OoEmitterList() {
+                    this.items = [];
+                    this.aggregateItemEvents = {};
+                };
 
             function normalizeArrayIndex(arr, index) {
                 return (index === undefined || index < 0 || index >= arr.length) ? arr.length : index;
             }
-            oo.EmitterList.prototype.getItems = function() {
+            OO.EmitterList.prototype.getItems = function() {
                 return this.items.slice(0);
             };
-            oo.EmitterList.prototype.getItemIndex = function(item) {
+            OO.EmitterList.prototype.getItemIndex = function(item) {
                 return this.items.indexOf(item);
             };
-            oo.EmitterList.prototype.getItemCount = function() {
+            OO.EmitterList.prototype.getItemCount = function() {
                 return this.items.length;
             };
-            oo.EmitterList.prototype.isEmpty = function() {
+            OO.EmitterList.prototype.isEmpty = function() {
                 return !this.items.length;
             };
-            oo.EmitterList.prototype.aggregate = function(events) {
+            OO.EmitterList.prototype.aggregate = function(events) {
                 var i, item, add, remove, itemEvent, groupEvent;
                 for (itemEvent in events) {
                     groupEvent = events[itemEvent];
-                    if (Object.prototype.hasOwnProperty.call(this.aggregateItemEvents,
-                            itemEvent)) {
+                    if (Object.prototype.hasOwnProperty.call(this.aggregateItemEvents, itemEvent)) {
                         if (groupEvent) {
                             throw new Error('Duplicate item event aggregation for ' + itemEvent);
                         }
@@ -11078,7 +11204,8 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                             if (item.connect && item.disconnect) {
                                 remove = {};
                                 remove[itemEvent] = ['emit', this.aggregateItemEvents[itemEvent], item];
-                                item.disconnect(this, remove);
+                                item.disconnect(this,
+                                    remove);
                             }
                         }
                         delete this.aggregateItemEvents[itemEvent];
@@ -11096,7 +11223,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                     }
                 }
             };
-            oo.EmitterList.prototype.addItems = function(items, index) {
+            OO.EmitterList.prototype.addItems = function(items, index) {
                 var i, oldIndex;
                 if (!Array.isArray(items)) {
                     items = [items];
@@ -11118,21 +11245,25 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 }
                 return this;
             };
-            oo.EmitterList.prototype.moveItem = function(item, newIndex) {
+            OO.EmitterList.prototype.moveItem = function(item, newIndex) {
                 var existingIndex = this.items.indexOf(item);
                 if (existingIndex === -1) {
                     throw new Error('Item cannot be moved, because it is not in the list.');
                 }
                 newIndex = normalizeArrayIndex(this.items, newIndex);
-                this.items.splice(existingIndex, 1);
+                this.items.splice(
+                    existingIndex, 1);
                 if (existingIndex < newIndex) {
                     newIndex--;
                 }
                 this.items.splice(newIndex, 0, item);
                 return newIndex;
             };
-            oo.EmitterList.prototype.insertItem = function(item, index) {
+            OO.EmitterList.prototype.insertItem = function(item, index) {
                 var events, event;
+                if (item === null || typeof item !== 'object') {
+                    throw new Error('Expected object, but item is ' + typeof item);
+                }
                 if (item.connect && item.disconnect) {
                     events = {};
                     for (event in this.aggregateItemEvents) {
@@ -11144,7 +11275,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 this.items.splice(index, 0, item);
                 return index;
             };
-            oo.EmitterList.prototype.removeItems = function(items) {
+            OO.EmitterList.prototype.removeItems = function(items) {
                 var i, item, index;
                 if (!Array.isArray(items)) {
                     items = [items];
@@ -11157,8 +11288,7 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                     index = this.items.indexOf(item);
                     if (index !== -1) {
                         if (item.connect && item.disconnect) {
-                            item.
-                            disconnect(this);
+                            item.disconnect(this);
                         }
                         this.items.splice(index, 1);
                         this.emit('remove', item, index);
@@ -11166,8 +11296,9 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 }
                 return this;
             };
-            oo.EmitterList.prototype.clearItems = function() {
-                var i, item, cleared = this.items.splice(0, this.items.length);
+            OO.EmitterList.prototype.clearItems = function() {
+                var i, item, cleared = this.items.splice(0,
+                    this.items.length);
                 for (i = 0; i < cleared.length; i++) {
                     item = cleared[i];
                     if (item.connect && item.disconnect) {
@@ -11178,8 +11309,8 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 return this;
             };
         }());
-        oo.SortedEmitterList = function OoSortedEmitterList(sortingCallback) {
-            oo.EmitterList.call(this);
+        OO.SortedEmitterList = function OoSortedEmitterList(sortingCallback) {
+            OO.EmitterList.call(this);
             this.sortingCallback = sortingCallback;
             this.aggregate({
                 sortChange: 'itemSortChange'
@@ -11188,21 +11319,20 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 itemSortChange: 'onItemSortChange'
             });
         };
-        oo.mixinClass(oo.SortedEmitterList, oo.EmitterList);
-        oo.SortedEmitterList.prototype.onItemSortChange = function(item) {
+        OO.mixinClass(OO.SortedEmitterList, OO.EmitterList);
+        OO.SortedEmitterList.prototype.onItemSortChange = function(item) {
             this.removeItems(item);
             this.addItems(item);
         };
-        oo.SortedEmitterList.prototype.setSortingCallback = function(sortingCallback) {
+        OO.SortedEmitterList.prototype.setSortingCallback = function(sortingCallback) {
             var items = this.getItems();
             this.sortingCallback = sortingCallback;
             this.clearItems();
             this.addItems(items);
         };
-        oo.SortedEmitterList.prototype.addItems = function(items) {
+        OO.SortedEmitterList.prototype.addItems = function(items) {
             var index, i, insertionIndex;
-            if (!
-                Array.isArray(items)) {
+            if (!Array.isArray(items)) {
                 items = [items];
             }
             if (items.length === 0) {
@@ -11218,18 +11348,18 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             }
             return this;
         };
-        oo.SortedEmitterList.prototype.findInsertionIndex = function(item) {
+        OO.SortedEmitterList.prototype.findInsertionIndex = function(item) {
             var list = this;
-            return oo.binarySearch(this.items, function(otherItem) {
+            return OO.binarySearch(this.items, function(otherItem) {
                 return list.sortingCallback(item, otherItem);
             }, true);
         };
-        oo.Registry = function OoRegistry() {
-            oo.EventEmitter.call(this);
+        OO.Registry = function OoRegistry() {
+            OO.EventEmitter.call(this);
             this.registry = {};
         };
-        oo.mixinClass(oo.Registry, oo.EventEmitter);
-        oo.Registry.prototype.register = function(name, data) {
+        OO.mixinClass(OO.Registry, OO.EventEmitter);
+        OO.Registry.prototype.register = function(name, data) {
             var i, len;
             if (typeof name === 'string') {
                 this.registry[name] = data;
@@ -11239,15 +11369,15 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                     this.register(name[i], data);
                 }
             } else {
-                throw new Error(
-                    'Name must be a string or array, cannot be a ' + typeof name);
+                throw new Error('Name must be a string or array, cannot be a ' + typeof name);
             }
         };
-        oo.Registry.prototype.unregister = function(name) {
+        OO.Registry.prototype.unregister = function(name) {
             var i, len, data;
             if (typeof name === 'string') {
                 data = this.lookup(name);
-                if (data !== undefined) {
+                if (data !==
+                    undefined) {
                     delete this.registry[name];
                     this.emit('unregister', name, data);
                 }
@@ -11259,39 +11389,38 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
                 throw new Error('Name must be a string or array, cannot be a ' + typeof name);
             }
         };
-        oo.Registry.prototype.lookup = function(name) {
+        OO.Registry.prototype.lookup = function(name) {
             if (hasOwn.call(this.registry, name)) {
                 return this.registry[name];
             }
         };
-        oo.Factory = function OoFactory() {
-            oo.Factory.super.call(this);
+        OO.Factory = function OoFactory() {
+            OO.Factory.super.call(this);
         };
-        oo.inheritClass(oo.Factory, oo.Registry);
-        oo.Factory.prototype.register = function(constructor) {
-            var name;
+        OO.inheritClass(OO.Factory, OO.Registry);
+        OO.Factory.prototype.register = function(constructor, name) {
             if (typeof constructor !== 'function') {
-                throw new Error('constructor must be a function, cannot be a ' + typeof constructor);
+                throw new Error('constructor must be a function, got ' + typeof constructor);
             }
-            name = constructor.static && constructor.static.name;
+            if (arguments.length <= 1) {
+                name = constructor.static && constructor.static.name;
+            }
             if (typeof name !== 'string' || name === '') {
-                throw new Error('Name must be a string and must not be empty');
+                throw new Error('name must be a non-empty string');
             }
-            oo.Factory.super.
-            prototype.register.call(this, name, constructor);
+            OO.Factory.super.prototype.register.call(this, name, constructor);
         };
-        oo.Factory.prototype.unregister = function(constructor) {
-            var name;
-            if (typeof constructor !== 'function') {
-                throw new Error('constructor must be a function, cannot be a ' + typeof constructor);
+        OO.Factory.prototype.unregister = function(name) {
+            if (typeof name === 'function') {
+                name = name.static && name.static.name;
             }
-            name = constructor.static && constructor.static.name;
-            if (typeof name !== 'string' || name === '') {
-                throw new Error('Name must be a string and must not be empty');
+            if (typeof name !== 'string' ||
+                name === '') {
+                throw new Error('name must be a non-empty string');
             }
-            oo.Factory.super.prototype.unregister.call(this, name);
+            OO.Factory.super.prototype.unregister.call(this, name);
         };
-        oo.Factory.prototype.create = function(name) {
+        OO.Factory.prototype.create = function(name) {
             var obj, i, args = [],
                 constructor = this.lookup(name);
             if (!constructor) {
@@ -11305,14 +11434,14 @@ mw.loader.implement("oojs@0o5o6ml", function($, jQuery, require, module) {
             return obj;
         };
         if (typeof module !== 'undefined' && module.exports) {
-            module.exports = oo;
+            module.exports = OO;
         } else {
-            global.OO = oo;
+            global.OO = OO;
         }
     }(this));
     window.OO = module.exports;
 });
-mw.loader.implement("oojs-router@1meh8at", function($, jQuery, require, module) {
+mw.loader.implement("oojs-router@1meh8", function($, jQuery, require, module) {
     (function($) {
         'use strict';
         OO.Router = function OoRouter() {
@@ -11398,146 +11527,16 @@ mw.loader.implement("oojs-router@1meh8at", function($, jQuery, require, module) 
             }, 50);
             return deferred.promise();
         };
-        OO.Router.prototype.getPath =
-            function() {
-                return window.location.hash.slice(1);
-            };
+        OO.Router.prototype.getPath = function() {
+            return window.location.hash.slice(1);
+        };
         OO.Router.prototype.isSupported = OO.Router.static.isSupported;
         if (typeof module !== 'undefined' && module.exports) {
             module.exports = OO.Router;
         }
     }(jQuery));
 });
-mw.loader.implement("jquery.accessKeyLabel@1fpzh15", function($, jQuery, require, module) {
-    (function() {
-        var cachedAccessKeyModifiers, useTestPrefix = !1,
-            labelable = 'button, input, textarea, keygen, meter, output, progress, select';
-
-        function getAccessKeyModifiers(ua) {
-            var profile, accessKeyModifiers;
-            if (!ua && cachedAccessKeyModifiers) {
-                return cachedAccessKeyModifiers;
-            }
-            profile = $.client.profile(ua);
-            switch (profile.name) {
-                case 'chrome':
-                case 'opera':
-                    if (profile.name === 'opera' && profile.versionNumber < 15) {
-                        accessKeyModifiers = ['shift', 'esc'];
-                    } else if (profile.platform === 'mac') {
-                        accessKeyModifiers = ['ctrl', 'option'];
-                    } else {
-                        accessKeyModifiers = ['alt', 'shift'];
-                    }
-                    break;
-                case 'firefox':
-                case 'iceweasel':
-                    if (profile.versionBase < 2) {
-                        accessKeyModifiers = ['alt'];
-                    } else {
-                        if (profile.platform === 'mac') {
-                            if (profile.versionNumber < 14) {
-                                accessKeyModifiers = ['ctrl'];
-                            } else {
-                                accessKeyModifiers = ['ctrl', 'option'];
-                            }
-                        } else {
-                            accessKeyModifiers = ['alt', 'shift'];
-                        }
-                    }
-                    break;
-                case 'safari':
-                case 'konqueror':
-                    if (profile.platform === 'win') {
-                        accessKeyModifiers = ['alt'];
-                    } else {
-                        if (profile.layoutVersion > 526) {
-                            accessKeyModifiers = ['ctrl', profile.platform === 'mac' ? 'option' : 'alt'];
-                        } else {
-                            accessKeyModifiers = ['ctrl'];
-                        }
-                    }
-                    break;
-                case 'msie':
-                case 'edge':
-                    accessKeyModifiers = ['alt'];
-                    break;
-                default:
-                    accessKeyModifiers = profile.platform === 'mac' ? ['ctrl'] : ['alt'];
-                    break;
-            }
-            if (!ua) {
-                cachedAccessKeyModifiers = accessKeyModifiers;
-            }
-            return accessKeyModifiers;
-        }
-
-        function getAccessKeyLabel(element) {
-            if (!element.accessKey) {
-                return '';
-            }
-            if (!useTestPrefix && element.accessKeyLabel) {
-                return element.accessKeyLabel;
-            }
-            return (useTestPrefix ? 'test' : getAccessKeyModifiers().join('-')) + '-' + element.accessKey;
-        }
-
-        function updateTooltipOnElement(element, titleElement) {
-            var oldTitle, parts, regexp, newTitle, accessKeyLabel, separatorMsg = mw.message('word-separator').plain();
-            oldTitle = titleElement.title;
-            if (!oldTitle) {
-                return;
-            }
-            parts = (separatorMsg + mw.message('brackets').plain()).split('$1');
-            regexp = new RegExp(parts.map(mw.RegExp.escape).join('.*?') + '$');
-            newTitle = oldTitle.replace(regexp, '');
-            accessKeyLabel = getAccessKeyLabel(element);
-            if (
-                accessKeyLabel) {
-                newTitle += separatorMsg + mw.message('brackets', accessKeyLabel).plain();
-            }
-            if (oldTitle !== newTitle) {
-                titleElement.title = newTitle;
-            }
-        }
-
-        function updateTooltip(element) {
-            var id, $element, $label, $labelParent;
-            updateTooltipOnElement(element, element);
-            $element = $(element);
-            if ($element.is(labelable)) {
-                id = element.id.replace(/"/g, '\\"');
-                if (id) {
-                    $label = $('label[for="' + id + '"]');
-                    if ($label.length === 1) {
-                        updateTooltipOnElement(element, $label[0]);
-                    }
-                }
-                $labelParent = $element.parents('label');
-                if ($labelParent.length === 1) {
-                    updateTooltipOnElement(element, $labelParent[0]);
-                }
-            }
-        }
-        $.fn.updateTooltipAccessKeys = function() {
-            return this.each(function() {
-                updateTooltip(this);
-            });
-        };
-        $.fn.updateTooltipAccessKeys.getAccessKeyModifiers = getAccessKeyModifiers;
-        $.fn.updateTooltipAccessKeys.getAccessKeyLabel = getAccessKeyLabel;
-        $.fn.updateTooltipAccessKeys.getAccessKeyPrefix = function(ua) {
-            return getAccessKeyModifiers(ua).join('-') + '-';
-        };
-        $.fn.updateTooltipAccessKeys.setTestMode = function(mode) {
-            useTestPrefix = mode;
-        };
-    }());
-}, {}, {
-    "brackets": "[$1]",
-    "word-separator": " "
-});
-mw.loader.implement("jquery.client@0cwc6tv", function($, jQuery, require, module) {
+mw.loader.implement("jquery.client@cwc6t", function($, jQuery, require, module) {
     (function() {
         var profileCache = {};
         $.client = {
@@ -11562,8 +11561,8 @@ mw.loader.implement("jquery.client@0cwc6tv", function($, jQuery, require, module
                     ],
                     versionPrefixes = ['camino', 'chrome', 'firefox', 'iceweasel', 'netscape', 'netscape6', 'opera', 'version', 'konqueror', 'lynx', 'msie', 'safari', 'ps3', 'android'],
                     versionSuffix = '(\\/|\\;?\\s|)([a-z0-9\\.\\+]*?)(\\;|dev|rel|\\)|\\s|$)',
-                    names = ['camino', 'chrome', 'firefox', 'iceweasel', 'netscape', 'konqueror', 'lynx', 'msie', 'opera', 'safari', 'ipod',
-                        'iphone', 'blackberry', 'ps3', 'rekonq', 'android'
+                    names = ['camino', 'chrome', 'firefox', 'iceweasel', 'netscape', 'konqueror', 'lynx', 'msie', 'opera', 'safari', 'ipod', 'iphone',
+                        'blackberry', 'ps3', 'rekonq', 'android'
                     ],
                     nameTranslations = [],
                     layouts = ['gecko', 'konqueror', 'msie', 'trident', 'edge', 'opera', 'webkit'],
@@ -11601,7 +11600,8 @@ mw.loader.implement("jquery.client@0cwc6tv", function($, jQuery, require, module
                 if ((match = new RegExp('(' + names.join('|') + ')').exec(ua))) {
                     name = translate(match[1], nameTranslations);
                 }
-                if ((match = new RegExp('(' + layouts.join('|') + ')').exec(ua))) {
+                if ((match = new RegExp('(' + layouts.join('|') +
+                        ')').exec(ua))) {
                     layout = translate(match[1], layoutTranslations);
                 }
                 if ((match = new RegExp('(' + layoutVersions.join('|') + ')\\/(\\d+)').exec(ua))) {
@@ -11642,8 +11642,7 @@ mw.loader.implement("jquery.client@0cwc6tv", function($, jQuery, require, module
                     layout = 'edge';
                     layoutversion = parseInt(match[1], 10);
                 }
-                if ((match = ua.match(
-                        /\bsilk\/([0-9.\-_]*)/))) {
+                if ((match = ua.match(/\bsilk\/([0-9.\-_]*)/))) {
                     if (match[1]) {
                         name = 'silk';
                         version = match[1];
@@ -11687,7 +11686,8 @@ mw.loader.implement("jquery.client@0cwc6tv", function($, jQuery, require, module
                         while (pieceVersion.length < pieceVal.length) {
                             pieceVersion.push('0');
                         }
-                        while (pieceVal.length < pieceVersion.length) {
+                        while (pieceVal.length <
+                            pieceVersion.length) {
                             pieceVal.push('0');
                         }
                         compare = 0;
@@ -11714,7 +11714,7 @@ mw.loader.implement("jquery.client@0cwc6tv", function($, jQuery, require, module
         };
     }());
 });
-mw.loader.implement("jquery.cookie@1fdv0i0", function($, jQuery, require, module) {
+mw.loader.implement("jquery.cookie@1fdv0", function($, jQuery, require, module) {
     (function($, document, undefined) {
         var pluses = /\+/g;
 
@@ -11748,8 +11748,8 @@ mw.loader.implement("jquery.cookie@1fdv0i0", function($, jQuery, require, module
                     t.setDate(t.getDate() + days);
                 }
                 value = config.json ? JSON.stringify(value) : String(value);
-                return (document.cookie = [encodeURIComponent(key), '=', config.raw ? value : encodeURIComponent(value), options.expires ? '; expires=' + options.expires.toUTCString() : '', options.path ? '; path=' + options.path : '', options.domain ? '; domain=' + options.
-                    domain : '', options.secure ? '; secure' : ''
+                return (document.cookie = [encodeURIComponent(key), '=', config.raw ? value : encodeURIComponent(value), options.expires ? '; expires=' + options.expires.toUTCString() : '', options.path ? '; path=' + options.path : '', options.domain ? '; domain=' + options.domain :
+                    '', options.secure ? '; secure' : ''
                 ].join(''));
             }
             var decode = config.raw ? raw : decoded;
@@ -11779,7 +11779,7 @@ mw.loader.implement("jquery.cookie@1fdv0i0", function($, jQuery, require, module
         };
     })(jQuery, document);
 });
-mw.loader.implement("jquery.textSelection@1fsndek", function($, jQuery, require, module) {
+mw.loader.implement("jquery.textSelection@1fsnd", function($, jQuery, require, module) {
     (function() {
         $.fn.textSelection = function(command, options) {
             var fn, alternateFn, retval;
@@ -12006,7 +12006,7 @@ mw.loader.implement("jquery.textSelection@1fsndek", function($, jQuery, require,
         };
     }());
 });
-mw.loader.implement("jquery.throttle-debounce@19vxvii", function($, jQuery, require, module) {
+mw.loader.implement("jquery.throttle-debounce@19vxv", function($, jQuery, require, module) {
     mw.log.warn("This page is using the deprecated ResourceLoader module \"jquery.throttle-debounce\".\nPlease use OO.ui.throttle/debounce instead. See https://phabricator.wikimedia.org/T213426");
     (function(window, undefined) {
         '$:nomunge';
@@ -12054,16 +12054,7 @@ mw.loader.implement("jquery.throttle-debounce@19vxvii", function($, jQuery, requ
         };
     })(this);
 });
-mw.loader.implement("mediawiki.RegExp@10ymrcm", function($, jQuery, require, module) {
-    (function() {
-        mw.RegExp = {
-            escape: function(str) {
-                return str.replace(/([\\{}()|.?*+\-^$\[\]])/g, '\\$1');
-            }
-        };
-    }());
-});
-mw.loader.implement("mediawiki.String@152v5tv", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.String@152v5", function($, jQuery, require, module) {
     (function() {
         function byteLength(str) {
             return str.replace(/[\u0080-\u07FF\uD800-\uDFFF]/g, '**').replace(/[\u0800-\uD7FF\uE000-\uFFFF]/g, '***').length;
@@ -12151,7 +12142,7 @@ mw.loader.implement("mediawiki.String@152v5tv", function($, jQuery, require, mod
         };
     }());
 });
-mw.loader.implement("mediawiki.Title@0u6msks", {
+mw.loader.implement("mediawiki.Title@1u3kg", {
     "main": "Title.js",
     "files": {
         "Title.js": function(require, module) {
@@ -12181,10 +12172,10 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                 },
                 rUnderscoreTrim = /^_+|_+$/g,
                 rSplit = /^(.+?)_*:_*(.*)$/,
-                rInvalid = new RegExp('[^' + mw.config.get('wgLegalTitleChars') + ']' + '|%[0-9A-Fa-f]{2}' + '|&[A-Za-z0-9\u0080-\uFFFF]+;' + '|&#[0-9]+;' + '|&#x[0-9A-Fa-f]+;'),
+                rInvalid = new RegExp('[^' + mw.config.get('wgLegalTitleChars') + ']' + '|%[\\dA-Fa-f]{2}' + '|&[\\dA-Za-z\u0080-\uFFFF]+;' + '|&#\\d+;' + '|&#x[\\dA-Fa-f]+;'),
                 rWhitespace =
                 /[ _\u00A0\u1680\u180E\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+/g,
-                rUnicodeBidi = /[\u200E\u200F\u202A-\u202E]/g,
+                rUnicodeBidi = /[\u200E\u200F\u202A-\u202E]+/g,
                 sanitationRules = [{
                     pattern: /~{3}/g,
                     replace: '',
@@ -12194,11 +12185,11 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                     replace: '',
                     generalRule: !0
                 }, {
-                    pattern: /%([0-9A-Fa-f]{2})/g,
+                    pattern: /%([\dA-Fa-f]{2})/g,
                     replace: '% $1',
                     generalRule: !0
                 }, {
-                    pattern: /&(([A-Za-z0-9\x80-\xff]+|#[0-9]+|#x[0-9A-Fa-f]+);)/g,
+                    pattern: /&(([\dA-Za-z\x80-\xff]+|#\d+|#x[\dA-Fa-f]+);)/g,
                     replace: '& $1',
                     generalRule: !0
                 }, {
@@ -12223,11 +12214,11 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                     generalRule: !0
                 }],
                 parse = function(title, defaultNamespace) {
-                    var namespace, m, id, i, fragment, ext;
+                    var namespace, m, id, i, fragment;
                     namespace = defaultNamespace === undefined ? NS_MAIN : defaultNamespace;
                     title = title.replace(rUnicodeBidi, '').replace(rWhitespace, '_').replace(rUnderscoreTrim, '');
-                    if (
-                        title !== '' && title[0] === ':') {
+                    if (title !==
+                        '' && title[0] === ':') {
                         namespace = NS_MAIN;
                         title = title.slice(1).replace(rUnderscoreTrim, '');
                     }
@@ -12254,7 +12245,7 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                         fragment = title.slice(i + 1).replace(/_/g, ' ');
                         title = title.slice(0, i).replace(rUnderscoreTrim, '');
                     }
-                    if (title.match(rInvalid)) {
+                    if (rInvalid.test(title)) {
                         return false;
                     }
                     if (title.indexOf('.') !== -1 && (title === '.' || title === '..' || title.indexOf('./') === 0 || title.indexOf('../') === 0 || title.indexOf('/./') !== -1 || title.indexOf('/../') !== -1 || title.slice(-2) === '/.' || title.slice(-3) === '/..')) {
@@ -12272,22 +12263,14 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                     if (title[0] === ':') {
                         return false;
                     }
-                    i = title.lastIndexOf('.');
-                    if (i === -1 || title.length <= i + 1) {
-                        ext =
-                            null;
-                    } else {
-                        ext = title.slice(i + 1);
-                        title = title.slice(0, i);
-                    }
                     return {
                         namespace: namespace,
                         title: title,
-                        ext: ext,
                         fragment: fragment
                     };
                 },
-                text = function(s) {
+                text =
+                function(s) {
                     return s.replace(/_/g, ' ');
                 },
                 sanitize = function(s, filter) {
@@ -12316,7 +12299,6 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                 }
                 this.namespace = parsed.namespace;
                 this.title = parsed.title;
-                this.ext = parsed.ext;
                 this.fragment = parsed.fragment;
             }
             Title.newFromText = function(title, namespace) {
@@ -12327,7 +12309,6 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                 t = Object.create(Title.prototype);
                 t.namespace = parsed.namespace;
                 t.title = parsed.title;
-                t.ext = parsed.ext;
                 t.fragment = parsed.fragment;
                 return t;
             };
@@ -12360,8 +12341,7 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                 }
                 if (namespace === NS_MEDIA || (options.forUploading && (namespace === NS_FILE))) {
                     title = sanitize(title, ['generalRule', 'fileRule']);
-                    lastDot = title.lastIndexOf(
-                        '.');
+                    lastDot = title.lastIndexOf('.');
                     if (lastDot === -1 || lastDot >= title.length - 1) {
                         return null;
                     }
@@ -12384,18 +12364,16 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
             };
             Title.newFromImg = function(img) {
                 var matches, i, regex, src, decodedSrc, thumbPhpRegex = /thumb\.php/,
-                    regexes = [/\/[a-f0-9]\/[a-f0-9]{2}\/([^\s/]+)\/[^\s/]+-[^\s/]*$/, /\/[a-f0-9]\/[a-f0-9]{2}\/([^\s/]+)$/, /\/([^\s/]+)\/[^\s/]+-(?:\1|thumbnail)[^\s/]*$/, /\/([^\s/]+)$/],
+                    regexes = [/\/[\da-f]\/[\da-f]{2}\/([^\s/]+)\/[^\s/]+-[^\s/]*$/, /\/[\da-f]\/[\da-f]{2}\/([^\s/]+)$/, /\/([^\s/]+)\/[^\s/]+-(?:\1|thumbnail)[^\s/]*$/, /\/([^\s/]+)$/],
                     recount = regexes.length;
                 src = img.jquery ? img[0].src : img.src;
-                matches = src.match(thumbPhpRegex);
-                if (matches) {
+                if (thumbPhpRegex.test(src)) {
                     return mw.Title.newFromText('File:' + mw.util.getParamValue('f', src));
                 }
                 decodedSrc = decodeURIComponent(src);
                 for (i = 0; i < recount; i++) {
                     regex = regexes[i];
-                    matches = decodedSrc.
-                    match(regex);
+                    matches = decodedSrc.match(regex);
                     if (matches && matches[1]) {
                         return mw.Title.newFromText('File:' + matches[1]);
                     }
@@ -12403,7 +12381,8 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                 return null;
             };
             Title.isTalkNamespace = function(namespaceId) {
-                return !!(namespaceId > NS_MAIN && namespaceId % 2);
+                return !!(namespaceId > NS_MAIN && namespaceId %
+                    2);
             };
             Title.wantSignaturesNamespace = function(namespaceId) {
                 return Title.isTalkNamespace(namespaceId) || mw.config.get('wgExtraSignatureNamespaces').indexOf(namespaceId) !== -1;
@@ -12436,16 +12415,16 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
             };
             Title.normalizeExtension = function(extension) {
                 var lower = extension.toLowerCase(),
-                    squish = {
+                    normalizations = {
                         htm: 'html',
                         jpeg: 'jpg',
                         mpeg: 'mpg',
                         tiff: 'tif',
                         ogv: 'ogg'
                     };
-                if (Object.prototype.hasOwnProperty.call(squish, lower)) {
-                    return squish[lower];
-                } else if (/^[0-9a-z]+$/.test(lower)) {
+                if (Object.hasOwnProperty.call(normalizations, lower)) {
+                    return normalizations[lower];
+                } else if (/^[\da-z]+$/.test(lower)) {
                     return lower;
                 } else {
                     return '';
@@ -12464,29 +12443,38 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                     return getNamespacePrefix(this.namespace);
                 },
                 getName: function() {
-                    if (mw.config.get('wgCaseSensitiveNamespaces').indexOf(this.namespace) !== -1 || !this.title.length) {
-                        return this.title;
+                    var ext = this.getExtension();
+                    if (ext === null) {
+                        return this.getMain();
                     }
-                    return mw.Title.phpCharToUpper(this.title[0]) + this.title.slice(1);
+                    return this.getMain().slice(0, -ext.length - 1);
                 },
                 getNameText: function() {
                     return text(this.getName());
                 },
                 getExtension: function() {
-                    return this.ext;
+                    var lastDot = this.title.lastIndexOf('.');
+                    if (lastDot === -1) {
+                        return null;
+                    }
+                    return this.title.slice(lastDot + 1) || null;
                 },
                 getDotExtension: function() {
-                    return this.ext === null ? '' : '.' + this.ext;
+                    var ext = this.getExtension();
+                    return ext === null ? '' : '.' + ext;
                 },
                 getMain: function() {
-                    return this.getName() + this.getDotExtension();
+                    if (mw.config.get('wgCaseSensitiveNamespaces').indexOf(this.namespace) !== -1 || !this.title.length) {
+                        return this.title;
+                    }
+                    return mw.Title.phpCharToUpper(this.title[0]) + this.title.slice(1);
                 },
                 getMainText: function() {
                     return text(this.getMain());
                 },
                 getPrefixedDb: function() {
-                    return this.getNamespacePrefix() + this
-                        .getMain();
+                    return this.getNamespacePrefix() +
+                        this.getMain();
                 },
                 getPrefixedText: function() {
                     return text(this.getPrefixedDb());
@@ -12530,14 +12518,16 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
                     return Title.exists(this);
                 }
             };
-            Title.prototype.
-            toString = Title.prototype.getPrefixedDb;
+            Title.
+            prototype.toString = Title.prototype.getPrefixedDb;
             Title.prototype.toText = Title.prototype.getPrefixedText;
             mw.Title = Title;
         },
         "phpCharToUpper.json": {
             "ß": "ß",
             "ŉ": "ŉ",
+            "ƀ": "ƀ",
+            "ƚ": "ƚ",
             "ǅ": "ǅ",
             "ǆ": "ǅ",
             "ǈ": "ǈ",
@@ -12547,22 +12537,141 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
             "ǰ": "ǰ",
             "ǲ": "ǲ",
             "ǳ": "ǲ",
-            "ʝ": "Ʝ",
+            "ȼ": "ȼ",
+            "ȿ": "ȿ",
+            "ɀ": "ɀ",
+            "ɂ": "ɂ",
+            "ɇ": "ɇ",
+            "ɉ": "ɉ",
+            "ɋ": "ɋ",
+            "ɍ": "ɍ",
+            "ɏ": "ɏ",
+            "ɐ": "ɐ",
+            "ɑ": "ɑ",
+            "ɒ": "ɒ",
+            "ɜ": "ɜ",
+            "ɡ": "ɡ",
+            "ɥ": "ɥ",
+            "ɦ": "ɦ",
+            "ɪ": "ɪ",
+            "ɫ": "ɫ",
+            "ɬ": "ɬ",
+            "ɱ": "ɱ",
+            "ɽ": "ɽ",
+            "ʂ": "ʂ",
+            "ʇ": "ʇ",
+            "ʉ": "ʉ",
+            "ʌ": "ʌ",
+            "ʝ": "ʝ",
+            "ʞ": "ʞ",
             "ͅ": "ͅ",
+            "ͱ": "ͱ",
+            "ͳ": "ͳ",
+            "ͷ": "ͷ",
+            "ͻ": "ͻ",
+            "ͼ": "ͼ",
+            "ͽ": "ͽ",
             "ΐ": "ΐ",
             "ΰ": "ΰ",
+            "ϗ": "ϗ",
+            "ϲ": "Σ",
+            "ϳ": "ϳ",
+            "ϸ": "ϸ",
+            "ϻ": "ϻ",
+            "ӏ": "ӏ",
+            "ӷ": "ӷ",
+            "ӻ": "ӻ",
+            "ӽ": "ӽ",
+            "ӿ": "ӿ",
+            "ԑ": "ԑ",
+            "ԓ": "ԓ",
+            "ԕ": "ԕ",
+            "ԗ": "ԗ",
+            "ԙ": "ԙ",
+            "ԛ": "ԛ",
+            "ԝ": "ԝ",
+            "ԟ": "ԟ",
+            "ԡ": "ԡ",
+            "ԣ": "ԣ",
+            "ԥ": "ԥ",
+            "ԧ": "ԧ",
+            "ԩ": "ԩ",
+            "ԫ": "ԫ",
+            "ԭ": "ԭ",
+            "ԯ": "ԯ",
             "և": "և",
-            "ᏸ": "Ᏸ",
-            "ᏹ": "Ᏹ",
-            "ᏺ": "Ᏺ",
-            "ᏻ": "Ᏻ",
-            "ᏼ": "Ᏼ",
-            "ᏽ": "Ᏽ",
+            "ა": "ა",
+            "ბ": "ბ",
+            "გ": "გ",
+            "დ": "დ",
+            "ე": "ე",
+            "ვ": "ვ",
+            "ზ": "ზ",
+            "თ": "თ",
+            "ი": "ი",
+            "კ": "კ",
+            "ლ": "ლ",
+            "მ": "მ",
+            "ნ": "ნ",
+            "ო": "ო",
+            "პ": "პ",
+            "ჟ": "ჟ",
+            "რ": "რ",
+            "ს": "ს",
+            "ტ": "ტ",
+            "უ": "უ",
+            "ფ": "ფ",
+            "ქ": "ქ",
+            "ღ": "ღ",
+            "ყ": "ყ",
+            "შ": "შ",
+            "ჩ": "ჩ",
+            "ც": "ც",
+            "ძ": "ძ",
+            "წ": "წ",
+            "ჭ": "ჭ",
+            "ხ": "ხ",
+            "ჯ": "ჯ",
+            "ჰ": "ჰ",
+            "ჱ": "ჱ",
+            "ჲ": "ჲ",
+            "ჳ": "ჳ",
+            "ჴ": "ჴ",
+            "ჵ": "ჵ",
+            "ჶ": "ჶ",
+            "ჷ": "ჷ",
+            "ჸ": "ჸ",
+            "ჹ": "ჹ",
+            "ჺ": "ჺ",
+            "ჽ": "ჽ",
+            "ჾ": "ჾ",
+            "ჿ": "ჿ",
+            "ᏸ": "ᏸ",
+            "ᏹ": "ᏹ",
+            "ᏺ": "ᏺ",
+            "ᏻ": "ᏻ",
+            "ᏼ": "ᏼ",
+            "ᏽ": "ᏽ",
+            "ᲀ": "ᲀ",
+            "ᲁ": "ᲁ",
+            "ᲂ": "ᲂ",
+            "ᲃ": "ᲃ",
+            "ᲄ": "ᲄ",
+            "ᲅ": "ᲅ",
+            "ᲆ": "ᲆ",
+            "ᲇ": "ᲇ",
+            "ᲈ": "ᲈ",
+            "ᵹ": "ᵹ",
+            "ᵽ": "ᵽ",
+            "ᶎ": "ᶎ",
             "ẖ": "ẖ",
             "ẗ": "ẗ",
             "ẘ": "ẘ",
             "ẙ": "ẙ",
             "ẚ": "ẚ",
+            "ỻ": "ỻ",
+            "ỽ": "ỽ",
+            "ỿ": "ỿ",
             "ὐ": "ὐ",
             "ὒ": "ὒ",
             "ὔ": "ὔ",
@@ -12642,6 +12751,7 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
             "ῶ": "ῶ",
             "ῷ": "ῷ",
             "ῼ": "ῼ",
+            "ⅎ": "ⅎ",
             "ⅰ": "ⅰ",
             "ⅱ": "ⅱ",
             "ⅲ": "ⅲ",
@@ -12658,6 +12768,7 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
             "ⅽ": "ⅽ",
             "ⅾ": "ⅾ",
             "ⅿ": "ⅿ",
+            "ↄ": "ↄ",
             "ⓐ": "ⓐ",
             "ⓑ": "ⓑ",
             "ⓒ": "ⓒ",
@@ -12684,89 +12795,338 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
             "ⓧ": "ⓧ",
             "ⓨ": "ⓨ",
             "ⓩ": "ⓩ",
-            "ꞵ": "Ꞵ",
-            "ꞷ": "Ꞷ",
-            "ꭓ": "Ꭓ",
-            "ꭰ": "Ꭰ",
-            "ꭱ": "Ꭱ",
-            "ꭲ": "Ꭲ",
-            "ꭳ": "Ꭳ",
-            "ꭴ": "Ꭴ",
-            "ꭵ": "Ꭵ",
-            "ꭶ": "Ꭶ",
-            "ꭷ": "Ꭷ",
-            "ꭸ": "Ꭸ",
-            "ꭹ": "Ꭹ",
-            "ꭺ": "Ꭺ",
-            "ꭻ": "Ꭻ",
-            "ꭼ": "Ꭼ",
-            "ꭽ": "Ꭽ",
-            "ꭾ": "Ꭾ",
-            "ꭿ": "Ꭿ",
-            "ꮀ": "Ꮀ",
-            "ꮁ": "Ꮁ",
-            "ꮂ": "Ꮂ",
-            "ꮃ": "Ꮃ",
-            "ꮄ": "Ꮄ",
-            "ꮅ": "Ꮅ",
-            "ꮆ": "Ꮆ",
-            "ꮇ": "Ꮇ",
-            "ꮈ": "Ꮈ",
-            "ꮉ": "Ꮉ",
-            "ꮊ": "Ꮊ",
-            "ꮋ": "Ꮋ",
-            "ꮌ": "Ꮌ",
-            "ꮍ": "Ꮍ",
-            "ꮎ": "Ꮎ",
-            "ꮏ": "Ꮏ",
-            "ꮐ": "Ꮐ",
-            "ꮑ": "Ꮑ",
-            "ꮒ": "Ꮒ",
-            "ꮓ": "Ꮓ",
-            "ꮔ": "Ꮔ",
-            "ꮕ": "Ꮕ",
-            "ꮖ": "Ꮖ",
-            "ꮗ": "Ꮗ",
-            "ꮘ": "Ꮘ",
-            "ꮙ": "Ꮙ",
-            "ꮚ": "Ꮚ",
-            "ꮛ": "Ꮛ",
-            "ꮜ": "Ꮜ",
-            "ꮝ": "Ꮝ",
-            "ꮞ": "Ꮞ",
-            "ꮟ": "Ꮟ",
-            "ꮠ": "Ꮠ",
-            "ꮡ": "Ꮡ",
-            "ꮢ": "Ꮢ",
-            "ꮣ": "Ꮣ",
-            "ꮤ": "Ꮤ",
-            "ꮥ": "Ꮥ",
-            "ꮦ": "Ꮦ",
-            "ꮧ": "Ꮧ",
-            "ꮨ": "Ꮨ",
-            "ꮩ": "Ꮩ",
-            "ꮪ": "Ꮪ",
-            "ꮫ": "Ꮫ",
-            "ꮬ": "Ꮬ",
-            "ꮭ": "Ꮭ",
-            "ꮮ": "Ꮮ",
-            "ꮯ": "Ꮯ",
-            "ꮰ": "Ꮰ",
-            "ꮱ": "Ꮱ",
-            "ꮲ": "Ꮲ",
-            "ꮳ": "Ꮳ",
-            "ꮴ": "Ꮴ",
-            "ꮵ": "Ꮵ",
-            "ꮶ": "Ꮶ",
-            "ꮷ": "Ꮷ",
-            "ꮸ": "Ꮸ",
-            "ꮹ": "Ꮹ",
-            "ꮺ": "Ꮺ",
-            "ꮻ": "Ꮻ",
-            "ꮼ": "Ꮼ",
-            "ꮽ": "Ꮽ",
-            "ꮾ": "Ꮾ",
-            "ꮿ": "Ꮿ",
+            "ⰰ": "ⰰ",
+            "ⰱ": "ⰱ",
+            "ⰲ": "ⰲ",
+            "ⰳ": "ⰳ",
+            "ⰴ": "ⰴ",
+            "ⰵ": "ⰵ",
+            "ⰶ": "ⰶ",
+            "ⰷ": "ⰷ",
+            "ⰸ": "ⰸ",
+            "ⰹ": "ⰹ",
+            "ⰺ": "ⰺ",
+            "ⰻ": "ⰻ",
+            "ⰼ": "ⰼ",
+            "ⰽ": "ⰽ",
+            "ⰾ": "ⰾ",
+            "ⰿ": "ⰿ",
+            "ⱀ": "ⱀ",
+            "ⱁ": "ⱁ",
+            "ⱂ": "ⱂ",
+            "ⱃ": "ⱃ",
+            "ⱄ": "ⱄ",
+            "ⱅ": "ⱅ",
+            "ⱆ": "ⱆ",
+            "ⱇ": "ⱇ",
+            "ⱈ": "ⱈ",
+            "ⱉ": "ⱉ",
+            "ⱊ": "ⱊ",
+            "ⱋ": "ⱋ",
+            "ⱌ": "ⱌ",
+            "ⱍ": "ⱍ",
+            "ⱎ": "ⱎ",
+            "ⱏ": "ⱏ",
+            "ⱐ": "ⱐ",
+            "ⱑ": "ⱑ",
+            "ⱒ": "ⱒ",
+            "ⱓ": "ⱓ",
+            "ⱔ": "ⱔ",
+            "ⱕ": "ⱕ",
+            "ⱖ": "ⱖ",
+            "ⱗ": "ⱗ",
+            "ⱘ": "ⱘ",
+            "ⱙ": "ⱙ",
+            "ⱚ": "ⱚ",
+            "ⱛ": "ⱛ",
+            "ⱜ": "ⱜ",
+            "ⱝ": "ⱝ",
+            "ⱞ": "ⱞ",
+            "ⱡ": "ⱡ",
+            "ⱥ": "ⱥ",
+            "ⱦ": "ⱦ",
+            "ⱨ": "ⱨ",
+            "ⱪ": "ⱪ",
+            "ⱬ": "ⱬ",
+            "ⱳ": "ⱳ",
+            "ⱶ": "ⱶ",
+            "ⲁ": "ⲁ",
+            "ⲃ": "ⲃ",
+            "ⲅ": "ⲅ",
+            "ⲇ": "ⲇ",
+            "ⲉ": "ⲉ",
+            "ⲋ": "ⲋ",
+            "ⲍ": "ⲍ",
+            "ⲏ": "ⲏ",
+            "ⲑ": "ⲑ",
+            "ⲓ": "ⲓ",
+            "ⲕ": "ⲕ",
+            "ⲗ": "ⲗ",
+            "ⲙ": "ⲙ",
+            "ⲛ": "ⲛ",
+            "ⲝ": "ⲝ",
+            "ⲟ": "ⲟ",
+            "ⲡ": "ⲡ",
+            "ⲣ": "ⲣ",
+            "ⲥ": "ⲥ",
+            "ⲧ": "ⲧ",
+            "ⲩ": "ⲩ",
+            "ⲫ": "ⲫ",
+            "ⲭ": "ⲭ",
+            "ⲯ": "ⲯ",
+            "ⲱ": "ⲱ",
+            "ⲳ": "ⲳ",
+            "ⲵ": "ⲵ",
+            "ⲷ": "ⲷ",
+            "ⲹ": "ⲹ",
+            "ⲻ": "ⲻ",
+            "ⲽ": "ⲽ",
+            "ⲿ": "ⲿ",
+            "ⳁ": "ⳁ",
+            "ⳃ": "ⳃ",
+            "ⳅ": "ⳅ",
+            "ⳇ": "ⳇ",
+            "ⳉ": "ⳉ",
+            "ⳋ": "ⳋ",
+            "ⳍ": "ⳍ",
+            "ⳏ": "ⳏ",
+            "ⳑ": "ⳑ",
+            "ⳓ": "ⳓ",
+            "ⳕ": "ⳕ",
+            "ⳗ": "ⳗ",
+            "ⳙ": "ⳙ",
+            "ⳛ": "ⳛ",
+            "ⳝ": "ⳝ",
+            "ⳟ": "ⳟ",
+            "ⳡ": "ⳡ",
+            "ⳣ": "ⳣ",
+            "ⳬ": "ⳬ",
+            "ⳮ": "ⳮ",
+            "ⳳ": "ⳳ",
+            "ⴀ": "ⴀ",
+            "ⴁ": "ⴁ",
+            "ⴂ": "ⴂ",
+            "ⴃ": "ⴃ",
+            "ⴄ": "ⴄ",
+            "ⴅ": "ⴅ",
+            "ⴆ": "ⴆ",
+            "ⴇ": "ⴇ",
+            "ⴈ": "ⴈ",
+            "ⴉ": "ⴉ",
+            "ⴊ": "ⴊ",
+            "ⴋ": "ⴋ",
+            "ⴌ": "ⴌ",
+            "ⴍ": "ⴍ",
+            "ⴎ": "ⴎ",
+            "ⴏ": "ⴏ",
+            "ⴐ": "ⴐ",
+            "ⴑ": "ⴑ",
+            "ⴒ": "ⴒ",
+            "ⴓ": "ⴓ",
+            "ⴔ": "ⴔ",
+            "ⴕ": "ⴕ",
+            "ⴖ": "ⴖ",
+            "ⴗ": "ⴗ",
+            "ⴘ": "ⴘ",
+            "ⴙ": "ⴙ",
+            "ⴚ": "ⴚ",
+            "ⴛ": "ⴛ",
+            "ⴜ": "ⴜ",
+            "ⴝ": "ⴝ",
+            "ⴞ": "ⴞ",
+            "ⴟ": "ⴟ",
+            "ⴠ": "ⴠ",
+            "ⴡ": "ⴡ",
+            "ⴢ": "ⴢ",
+            "ⴣ": "ⴣ",
+            "ⴤ": "ⴤ",
+            "ⴥ": "ⴥ",
+            "ⴧ": "ⴧ",
+            "ⴭ": "ⴭ",
+            "ꙁ": "ꙁ",
+            "ꙃ": "ꙃ",
+            "ꙅ": "ꙅ",
+            "ꙇ": "ꙇ",
+            "ꙉ": "ꙉ",
+            "ꙋ": "ꙋ",
+            "ꙍ": "ꙍ",
+            "ꙏ": "ꙏ",
+            "ꙑ": "ꙑ",
+            "ꙓ": "ꙓ",
+            "ꙕ": "ꙕ",
+            "ꙗ": "ꙗ",
+            "ꙙ": "ꙙ",
+            "ꙛ": "ꙛ",
+            "ꙝ": "ꙝ",
+            "ꙟ": "ꙟ",
+            "ꙡ": "ꙡ",
+            "ꙣ": "ꙣ",
+            "ꙥ": "ꙥ",
+            "ꙧ": "ꙧ",
+            "ꙩ": "ꙩ",
+            "ꙫ": "ꙫ",
+            "ꙭ": "ꙭ",
+            "ꚁ": "ꚁ",
+            "ꚃ": "ꚃ",
+            "ꚅ": "ꚅ",
+            "ꚇ": "ꚇ",
+            "ꚉ": "ꚉ",
+            "ꚋ": "ꚋ",
+            "ꚍ": "ꚍ",
+            "ꚏ": "ꚏ",
+            "ꚑ": "ꚑ",
+            "ꚓ": "ꚓ",
+            "ꚕ": "ꚕ",
+            "ꚗ": "ꚗ",
+            "ꚙ": "ꚙ",
+            "ꚛ": "ꚛ",
+            "ꜣ": "ꜣ",
+            "ꜥ": "ꜥ",
+            "ꜧ": "ꜧ",
+            "ꜩ": "ꜩ",
+            "ꜫ": "ꜫ",
+            "ꜭ": "ꜭ",
+            "ꜯ": "ꜯ",
+            "ꜳ": "ꜳ",
+            "ꜵ": "ꜵ",
+            "ꜷ": "ꜷ",
+            "ꜹ": "ꜹ",
+            "ꜻ": "ꜻ",
+            "ꜽ": "ꜽ",
+            "ꜿ": "ꜿ",
+            "ꝁ": "ꝁ",
+            "ꝃ": "ꝃ",
+            "ꝅ": "ꝅ",
+            "ꝇ": "ꝇ",
+            "ꝉ": "ꝉ",
+            "ꝋ": "ꝋ",
+            "ꝍ": "ꝍ",
+            "ꝏ": "ꝏ",
+            "ꝑ": "ꝑ",
+            "ꝓ": "ꝓ",
+            "ꝕ": "ꝕ",
+            "ꝗ": "ꝗ",
+            "ꝙ": "ꝙ",
+            "ꝛ": "ꝛ",
+            "ꝝ": "ꝝ",
+            "ꝟ": "ꝟ",
+            "ꝡ": "ꝡ",
+            "ꝣ": "ꝣ",
+            "ꝥ": "ꝥ",
+            "ꝧ": "ꝧ",
+            "ꝩ": "ꝩ",
+            "ꝫ": "ꝫ",
+            "ꝭ": "ꝭ",
+            "ꝯ": "ꝯ",
+            "ꝺ": "ꝺ",
+            "ꝼ": "ꝼ",
+            "ꝿ": "ꝿ",
+            "ꞁ": "ꞁ",
+            "ꞃ": "ꞃ",
+            "ꞅ": "ꞅ",
+            "ꞇ": "ꞇ",
+            "ꞌ": "ꞌ",
+            "ꞑ": "ꞑ",
+            "ꞓ": "ꞓ",
+            "ꞔ": "ꞔ",
+            "ꞗ": "ꞗ",
+            "ꞙ": "ꞙ",
+            "ꞛ": "ꞛ",
+            "ꞝ": "ꞝ",
+            "ꞟ": "ꞟ",
+            "ꞡ": "ꞡ",
+            "ꞣ": "ꞣ",
+            "ꞥ": "ꞥ",
+            "ꞧ": "ꞧ",
+            "ꞩ": "ꞩ",
+            "ꞵ": "ꞵ",
+            "ꞷ": "ꞷ",
+            "ꞹ": "ꞹ",
+            "ꞻ": "ꞻ",
+            "ꞽ": "ꞽ",
+            "ꞿ": "ꞿ",
+            "ꟃ": "ꟃ",
+            "ꭓ": "ꭓ",
+            "ꭰ": "ꭰ",
+            "ꭱ": "ꭱ",
+            "ꭲ": "ꭲ",
+            "ꭳ": "ꭳ",
+            "ꭴ": "ꭴ",
+            "ꭵ": "ꭵ",
+            "ꭶ": "ꭶ",
+            "ꭷ": "ꭷ",
+            "ꭸ": "ꭸ",
+            "ꭹ": "ꭹ",
+            "ꭺ": "ꭺ",
+            "ꭻ": "ꭻ",
+            "ꭼ": "ꭼ",
+            "ꭽ": "ꭽ",
+            "ꭾ": "ꭾ",
+            "ꭿ": "ꭿ",
+            "ꮀ": "ꮀ",
+            "ꮁ": "ꮁ",
+            "ꮂ": "ꮂ",
+            "ꮃ": "ꮃ",
+            "ꮄ": "ꮄ",
+            "ꮅ": "ꮅ",
+            "ꮆ": "ꮆ",
+            "ꮇ": "ꮇ",
+            "ꮈ": "ꮈ",
+            "ꮉ": "ꮉ",
+            "ꮊ": "ꮊ",
+            "ꮋ": "ꮋ",
+            "ꮌ": "ꮌ",
+            "ꮍ": "ꮍ",
+            "ꮎ": "ꮎ",
+            "ꮏ": "ꮏ",
+            "ꮐ": "ꮐ",
+            "ꮑ": "ꮑ",
+            "ꮒ": "ꮒ",
+            "ꮓ": "ꮓ",
+            "ꮔ": "ꮔ",
+            "ꮕ": "ꮕ",
+            "ꮖ": "ꮖ",
+            "ꮗ": "ꮗ",
+            "ꮘ": "ꮘ",
+            "ꮙ": "ꮙ",
+            "ꮚ": "ꮚ",
+            "ꮛ": "ꮛ",
+            "ꮜ": "ꮜ",
+            "ꮝ": "ꮝ",
+            "ꮞ": "ꮞ",
+            "ꮟ": "ꮟ",
+            "ꮠ": "ꮠ",
+            "ꮡ": "ꮡ",
+            "ꮢ": "ꮢ",
+            "ꮣ": "ꮣ",
+            "ꮤ": "ꮤ",
+            "ꮥ": "ꮥ",
+            "ꮦ": "ꮦ",
+            "ꮧ": "ꮧ",
+            "ꮨ": "ꮨ",
+            "ꮩ": "ꮩ",
+            "ꮪ": "ꮪ",
+            "ꮫ": "ꮫ",
+            "ꮬ": "ꮬ",
+            "ꮭ": "ꮭ",
+            "ꮮ": "ꮮ",
+            "ꮯ": "ꮯ",
+            "ꮰ": "ꮰ",
+            "ꮱ": "ꮱ",
+            "ꮲ": "ꮲ",
+            "ꮳ": "ꮳ",
+            "ꮴ": "ꮴ",
+            "ꮵ": "ꮵ",
+            "ꮶ": "ꮶ",
+            "ꮷ": "ꮷ",
+            "ꮸ": "ꮸ",
+            "ꮹ": "ꮹ",
+            "ꮺ": "ꮺ",
+            "ꮻ": "ꮻ",
+            "ꮼ": "ꮼ",
+            "ꮽ": "ꮽ",
+            "ꮾ": "ꮾ",
+            "ꮿ": "ꮿ",
             "ﬀ": "ﬀ",
             "ﬁ": "ﬁ",
             "ﬂ": "ﬂ",
@@ -12778,11 +13138,198 @@ mw.loader.implement("mediawiki.Title@0u6msks", {
             "ﬔ": "ﬔ",
             "ﬕ": "ﬕ",
             "ﬖ": "ﬖ",
-            "ﬗ": "ﬗ"
+            "ﬗ": "ﬗ",
+            "𐑎": "𐑎",
+            "𐑏": "𐑏",
+            "𐓘": "𐓘",
+            "𐓙": "𐓙",
+            "𐓚": "𐓚",
+            "𐓛": "𐓛",
+            "𐓜": "𐓜",
+            "𐓝": "𐓝",
+            "𐓞": "𐓞",
+            "𐓟": "𐓟",
+            "𐓠": "𐓠",
+            "𐓡": "𐓡",
+            "𐓢": "𐓢",
+            "𐓣": "𐓣",
+            "𐓤": "𐓤",
+            "𐓥": "𐓥",
+            "𐓦": "𐓦",
+            "𐓧": "𐓧",
+            "𐓨": "𐓨",
+            "𐓩": "𐓩",
+            "𐓪": "𐓪",
+            "𐓫": "𐓫",
+            "𐓬": "𐓬",
+            "𐓭": "𐓭",
+            "𐓮": "𐓮",
+            "𐓯": "𐓯",
+            "𐓰": "𐓰",
+            "𐓱": "𐓱",
+            "𐓲": "𐓲",
+            "𐓳": "𐓳",
+            "𐓴": "𐓴",
+            "𐓵": "𐓵",
+            "𐓶": "𐓶",
+            "𐓷": "𐓷",
+            "𐓸": "𐓸",
+            "𐓹": "𐓹",
+            "𐓺": "𐓺",
+            "𐓻": "𐓻",
+            "𐳀": "𐳀",
+            "𐳁": "𐳁",
+            "𐳂": "𐳂",
+            "𐳃": "𐳃",
+            "𐳄": "𐳄",
+            "𐳅": "𐳅",
+            "𐳆": "𐳆",
+            "𐳇": "𐳇",
+            "𐳈": "𐳈",
+            "𐳉": "𐳉",
+            "𐳊": "𐳊",
+            "𐳋": "𐳋",
+            "𐳌": "𐳌",
+            "𐳍": "𐳍",
+            "𐳎": "𐳎",
+            "𐳏": "𐳏",
+            "𐳐": "𐳐",
+            "𐳑": "𐳑",
+            "𐳒": "𐳒",
+            "𐳓": "𐳓",
+            "𐳔": "𐳔",
+            "𐳕": "𐳕",
+            "𐳖": "𐳖",
+            "𐳗": "𐳗",
+            "𐳘": "𐳘",
+            "𐳙": "𐳙",
+            "𐳚": "𐳚",
+            "𐳛": "𐳛",
+            "𐳜": "𐳜",
+            "𐳝": "𐳝",
+            "𐳞": "𐳞",
+            "𐳟": "𐳟",
+            "𐳠": "𐳠",
+            "𐳡": "𐳡",
+            "𐳢": "𐳢",
+            "𐳣": "𐳣",
+            "𐳤": "𐳤",
+            "𐳥": "𐳥",
+            "𐳦": "𐳦",
+            "𐳧": "𐳧",
+            "𐳨": "𐳨",
+            "𐳩": "𐳩",
+            "𐳪": "𐳪",
+            "𐳫": "𐳫",
+            "𐳬": "𐳬",
+            "𐳭": "𐳭",
+            "𐳮": "𐳮",
+            "𐳯": "𐳯",
+            "𐳰": "𐳰",
+            "𐳱": "𐳱",
+            "𐳲": "𐳲",
+            "𑣀": "𑣀",
+            "𑣁": "𑣁",
+            "𑣂": "𑣂",
+            "𑣃": "𑣃",
+            "𑣄": "𑣄",
+            "𑣅": "𑣅",
+            "𑣆": "𑣆",
+            "𑣇": "𑣇",
+            "𑣈": "𑣈",
+            "𑣉": "𑣉",
+            "𑣊": "𑣊",
+            "𑣋": "𑣋",
+            "𑣌": "𑣌",
+            "𑣍": "𑣍",
+            "𑣎": "𑣎",
+            "𑣏": "𑣏",
+            "𑣐": "𑣐",
+            "𑣑": "𑣑",
+            "𑣒": "𑣒",
+            "𑣓": "𑣓",
+            "𑣔": "𑣔",
+            "𑣕": "𑣕",
+            "𑣖": "𑣖",
+            "𑣗": "𑣗",
+            "𑣘": "𑣘",
+            "𑣙": "𑣙",
+            "𑣚": "𑣚",
+            "𑣛": "𑣛",
+            "𑣜": "𑣜",
+            "𑣝": "𑣝",
+            "𑣞": "𑣞",
+            "𑣟": "𑣟",
+            "𖹠": "𖹠",
+            "𖹡": "𖹡",
+            "𖹢": "𖹢",
+            "𖹣": "𖹣",
+            "𖹤": "𖹤",
+            "𖹥": "𖹥",
+            "𖹦": "𖹦",
+            "𖹧": "𖹧",
+            "𖹨": "𖹨",
+            "𖹩": "𖹩",
+            "𖹪": "𖹪",
+            "𖹫": "𖹫",
+            "𖹬": "𖹬",
+            "𖹭": "𖹭",
+            "𖹮": "𖹮",
+            "𖹯": "𖹯",
+            "𖹰": "𖹰",
+            "𖹱": "𖹱",
+            "𖹲": "𖹲",
+            "𖹳": "𖹳",
+            "𖹴": "𖹴",
+            "𖹵": "𖹵",
+            "𖹶": "𖹶",
+            "𖹷": "𖹷",
+            "𖹸": "𖹸",
+            "𖹹": "𖹹",
+            "𖹺": "𖹺",
+            "𖹻": "𖹻",
+            "𖹼": "𖹼",
+            "𖹽": "𖹽",
+            "𖹾": "𖹾",
+            "𖹿": "𖹿",
+            "𞤢": "𞤢",
+            "𞤣": "𞤣",
+            "𞤤": "𞤤",
+            "𞤥": "𞤥",
+            "𞤦": "𞤦",
+            "𞤧": "𞤧",
+            "𞤨": "𞤨",
+            "𞤩": "𞤩",
+            "𞤪": "𞤪",
+            "𞤫": "𞤫",
+            "𞤬": "𞤬",
+            "𞤭": "𞤭",
+            "𞤮": "𞤮",
+            "𞤯": "𞤯",
+            "𞤰": "𞤰",
+            "𞤱": "𞤱",
+            "𞤲": "𞤲",
+            "𞤳": "𞤳",
+            "𞤴": "𞤴",
+            "𞤵": "𞤵",
+            "𞤶": "𞤶",
+            "𞤷": "𞤷",
+            "𞤸": "𞤸",
+            "𞤹": "𞤹",
+            "𞤺": "𞤺",
+            "𞤻": "𞤻",
+            "𞤼": "𞤼",
+            "𞤽": "𞤽",
+            "𞤾": "𞤾",
+            "𞤿": "𞤿",
+            "𞥀": "𞥀",
+            "𞥁": "𞥁",
+            "𞥂": "𞥂",
+            "𞥃": "𞥃"
         }
     }
 });
-mw.loader.implement("mediawiki.Uri@0m5gdom", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.Uri@m5gdo", function($, jQuery, require, module) {
     (function() {
         var parser, properties;
 
@@ -12822,8 +13369,8 @@ mw.loader.implement("mediawiki.Uri@0m5gdom", function($, jQuery, require, module
                     overrideKeys: !1,
                     arrayParams: !1
                 }, options);
-                this.arrayParams = options
-                    .arrayParams;
+                this.arrayParams = options.
+                arrayParams;
                 if (uri !== undefined && uri !== null && uri !== '') {
                     if (typeof uri === 'string') {
                         this.parse(uri, options);
@@ -12864,8 +13411,7 @@ mw.loader.implement("mediawiki.Uri@0m5gdom", function($, jQuery, require, module
                 }
             }
             Uri.encode = function(s) {
-                return encodeURIComponent(s).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(
-                    /%20/g, '+');
+                return encodeURIComponent(s).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');
             };
             Uri.decode = function(s) {
                 return decodeURIComponent(s.replace(/\+/g, '%20'));
@@ -12915,7 +13461,8 @@ mw.loader.implement("mediawiki.Uri@0m5gdom", function($, jQuery, require, module
                     }
                 },
                 getUserInfo: function() {
-                    return cat('', this.user, cat(':', this.password, ''));
+                    return cat('', this.user, cat(':',
+                        this.password, ''));
                 },
                 getHostPort: function() {
                     return this.host + cat(':', this.port, '');
@@ -12970,7 +13517,7 @@ mw.loader.implement("mediawiki.Uri@0m5gdom", function($, jQuery, require, module
     "strict.regexp": "^\n(?:(?\u003Cprotocol\u003E[^:/?#]+):)?\n(?://(?:\n\t(?:\n\t\t(?\u003Cuser\u003E[^:@/?#]*)\n\t\t(?::(?\u003Cpassword\u003E[^:@/?#]*))?\n\t)?@)?\n\t(?\u003Chost\u003E[^:/?#]*)\n\t(?::(?\u003Cport\u003E\\d*))?\n)?\n(?\u003Cpath\u003E(?:[^?#/]*/)*[^?#]*)\n(?:\\?(?\u003Cquery\u003E[^#]*))?\n(?:\\#(?\u003Cfragment\u003E.*))?\n",
     "loose.regexp": "^\n(?:\n\t(?![^:@]+:[^:@/]*@)\n\t(?\u003Cprotocol\u003E[^:/?#.]+):\n)?\n(?://)?\n(?:(?:\n\t(?\u003Cuser\u003E[^:@/?#]*)\n\t(?::(?\u003Cpassword\u003E[^:@/?#]*))?\n)?@)?\n(?\u003Chost\u003E[^:/?#]*)\n(?::(?\u003Cport\u003E\\d*))?\n(\n\t(?:/\n\t\t(?:[^?#]\n\t\t\t(?![^?#/]*\\.[^?#/.]+(?:[?#]|$))\n\t\t)*/?\n\t)?\n\t[^?#/]*\n)\n(?:\\?(?\u003Cquery\u003E[^#]*))?\n(?:\\#(?\u003Cfragment\u003E.*))?\n"
 });
-mw.loader.implement("mediawiki.api@0nli0da", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.api@nli0d", function($, jQuery, require, module) {
     (function() {
         var defaultOptions = {
                 parameters: {
@@ -13878,7 +14425,7 @@ mw.loader.implement("mediawiki.api@0nli0da", function($, jQuery, require, module
         });
     }());
 });
-mw.loader.implement("mediawiki.base@0f03fxc", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.base@f03fx", function($, jQuery, require, module) {
     (function() {
         'use strict';
         mw.errorLogger = {
@@ -13921,8 +14468,8 @@ mw.loader.implement("mediawiki.base@0f03fxc", function($, jQuery, require, modul
                 if (mw.config.get('wgUserLanguage') === 'qqx' && (!text || text === '(' + this.key + ')')) {
                     text = '(' + this.key + '$*)';
                 }
-                return mw
-                    .format.apply(null, [text].concat(this.parameters));
+                return mw.
+                format.apply(null, [text].concat(this.parameters));
             },
             params: function(parameters) {
                 var i;
@@ -13976,19 +14523,20 @@ mw.loader.implement("mediawiki.base@0f03fxc", function($, jQuery, require, modul
                 mw.inspect.runReports.apply(mw.inspect, args);
             });
         };
-        mw.internalDoTransformFormatForQqx = function(formatString, parameters) {
-            var parametersString;
-            if (formatString.indexOf('$*') !== -1) {
-                parametersString = '';
-                if (parameters.length) {
-                    parametersString = ': ' + parameters.map(function(_, i) {
-                        return '$' + (i + 1);
-                    }).join(', ');
+        mw.internalDoTransformFormatForQqx =
+            function(formatString, parameters) {
+                var parametersString;
+                if (formatString.indexOf('$*') !== -1) {
+                    parametersString = '';
+                    if (parameters.length) {
+                        parametersString = ': ' + parameters.map(function(_, i) {
+                            return '$' + (i + 1);
+                        }).join(', ');
+                    }
+                    return formatString.replace('$*', parametersString);
                 }
-                return formatString.replace('$*', parametersString);
-            }
-            return formatString;
-        };
+                return formatString;
+            };
         mw.format = function(formatString) {
             var parameters = slice.call(arguments, 1);
             formatString = mw.internalDoTransformFormatForQqx(formatString, parameters);
@@ -14225,7 +14773,7 @@ mw.loader.implement("mediawiki.base@0f03fxc", function($, jQuery, require, modul
         });
     }());
 });
-mw.loader.implement("mediawiki.cldr@00tc5i3", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.cldr@tc5i3", function($, jQuery, require, module) {
     (function() {
         'use strict';
         mw.cldr = {
@@ -14241,7 +14789,7 @@ mw.loader.implement("mediawiki.cldr@00tc5i3", function($, jQuery, require, modul
         };
     }());
 });
-mw.loader.implement("mediawiki.cookie@1565wnf", {
+mw.loader.implement("mediawiki.cookie@1565w", {
     "main": "index.js",
     "files": {
         "index.js": function(require, module) {
@@ -14307,7 +14855,7 @@ mw.loader.implement("mediawiki.cookie@1565wnf", {
         }
     }
 });
-mw.loader.implement("mediawiki.experiments@17uc3m9", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.experiments@17uc3", function($, jQuery, require, module) {
     (function() {
         var CONTROL_BUCKET = 'control',
             MAX_INT32_UNSIGNED = 4294967295;
@@ -14348,7 +14896,7 @@ mw.loader.implement("mediawiki.experiments@17uc3m9", function($, jQuery, require
         };
     }());
 });
-mw.loader.implement("mediawiki.jqueryMsg@1y0xho0", {
+mw.loader.implement("mediawiki.jqueryMsg@1y0xh", {
     "main": "mediawiki.jqueryMsg.js",
     "files": {
         "mediawiki.jqueryMsg.js": function(require, module) {
@@ -15028,7 +15576,7 @@ mw.loader.implement("mediawiki.jqueryMsg@1y0xho0", {
         }
     }
 });
-mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.language@aytd5", function($, jQuery, require, module) {
     (function() {
         mw.language = {
             data: {},
@@ -15066,8 +15614,8 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
                 }
                 pluralRules = mw.language.getData(mw.config.get('wgUserLanguage'), 'pluralRules');
                 if (!pluralRules) {
-                    return (count === 1) ? forms[0] :
-                        forms[1];
+                    return (count === 1) ? forms[0] : forms[
+                        1];
                 }
                 pluralFormIndex = mw.cldr.getPluralForm(count, pluralRules);
                 pluralFormIndex = Math.min(pluralFormIndex, forms.length - 1);
@@ -15105,8 +15653,7 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
                 }
                 patterns = transformations[form];
                 if (typeof patterns === 'string') {
-                    patterns = transformations[
-                        patterns];
+                    patterns = transformations[patterns];
                 }
                 for (i = 0; i < patterns.length; i++) {
                     rule = patterns[i];
@@ -15149,8 +15696,7 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
                     if (isPrivate) {
                         newSegment = segment.toLowerCase();
                     } else if (segment.length === 2 && !isFirstSegment) {
-                        newSegment = segment.
-                        toUpperCase();
+                        newSegment = segment.toUpperCase();
                     } else if (segment.length === 4 && !isFirstSegment) {
                         newSegment = segment.charAt(0).toUpperCase() + segment.substring(1).toLowerCase();
                     } else {
@@ -15202,8 +15748,7 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
                 return value;
             }
             if (patternParts[1]) {
-                padLength = (patternParts[1] &&
-                    patternParts[1].lastIndexOf('0') + 1);
+                padLength = (patternParts[1] && patternParts[1].lastIndexOf('0') + 1);
                 if (padLength > fractional.length) {
                     valueParts[1] = pad(fractional, padLength, '0', true);
                 }
@@ -15238,9 +15783,9 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
             if (options.minimumGroupingDigits === null || valueParts[0].length >= groupSize + options.minimumGroupingDigits) {
                 for (whole = valueParts[0]; whole;) {
                     off = groupSize ? whole.length - groupSize : 0;
-                    pieces.push((off > 0) ? whole.slice(off) :
-                        whole);
-                    whole = (off > 0) ? whole.slice(0, off) : '';
+                    pieces.push((off > 0) ? whole.slice(off) : whole);
+                    whole = (off >
+                        0) ? whole.slice(0, off) : '';
                     if (groupSize2) {
                         groupSize = groupSize2;
                         groupSize2 = null;
@@ -15277,8 +15822,8 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
                     if (mw.config.get('wgTranslateNumerals')) {
                         transformTable = digitTransformTable;
                     }
-                    pattern = mw.language.getData(mw.config.get('wgUserLanguage'),
-                        'digitGroupingPattern') || '#,##0.###';
+                    pattern = mw.language.getData(mw.config.get('wgUserLanguage'), 'digitGroupingPattern') ||
+                        '#,##0.###';
                     minimumGroupingDigits = mw.language.getData(mw.config.get('wgUserLanguage'), 'minimumGroupingDigits') || null;
                     numberString = mw.language.commafy(num, pattern, minimumGroupingDigits);
                 }
@@ -15308,9 +15853,9 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
             commafy: function(value, pattern, minimumGroupingDigits) {
                 var numberPattern, transformTable = mw.language.getSeparatorTransformTable(),
                     group = transformTable[','] || ',',
-                    numberPatternRE =
-                    /[#0,]*[#0](?:\.0*#*)?/,
-                    decimal = transformTable['.'] || '.',
+                    numberPatternRE = /[#0,]*[#0](?:\.0*#*)?/,
+                    decimal =
+                    transformTable['.'] || '.',
                     patternList = pattern.split(';'),
                     positivePattern = patternList[0];
                 pattern = patternList[(value < 0) ? 1 : 0] || ('-' + positivePattern);
@@ -15343,7 +15888,9 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
         "minimumGroupingDigits": null,
         "grammarForms": [],
         "grammarTransformations": [],
-        "pluralRules": ["i = 1 and v = 0 @integer 1"],
+        "pluralRules": [
+            "i = 1 and v = 0 @integer 1"
+        ],
         "digitGroupingPattern": null,
         "fallbackLanguages": [],
         "bcp47Map": {
@@ -15382,7 +15929,7 @@ mw.loader.implement("mediawiki.language@0aytd5t", function($, jQuery, require, m
     "comma-separator": ", ",
     "word-separator": " "
 });
-mw.loader.implement("mediawiki.notify@1w9s9af", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.notify@1w9s9", function($, jQuery, require, module) {
     (function() {
         'use strict';
         mw.notify = function(message, options) {
@@ -15392,13 +15939,13 @@ mw.loader.implement("mediawiki.notify@1w9s9af", function($, jQuery, require, mod
         };
     }());
 });
-mw.loader.implement("mediawiki.router@10tacll", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.router@10tac", function($, jQuery, require, module) {
     (function() {
         var Router = require('oojs-router');
         module.exports = new Router();
     }());
 });
-mw.loader.implement("mediawiki.storage@1r040mh", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.storage@1r040", function($, jQuery, require, module) {
     (function() {
         'use strict';
         var localStorage = (function() {
@@ -15458,7 +16005,7 @@ mw.loader.implement("mediawiki.storage@1r040mh", function($, jQuery, require, mo
         SafeStorage(sessionStorage);
     }());
 });
-mw.loader.implement("mediawiki.template@1oeb3iv", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.template@1oeb3", function($, jQuery, require, module) {
     (function() {
         var compiledTemplates = {},
             compilers = {};
@@ -15518,7 +16065,7 @@ mw.loader.implement("mediawiki.template@1oeb3iv", function($, jQuery, require, m
         });
     }());
 });
-mw.loader.implement("mediawiki.user@1qvt595", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.user@1qvt5", function($, jQuery, require, module) {
     (function() {
         var userInfoPromise, pageviewRandomId;
 
@@ -15590,214 +16137,347 @@ mw.loader.implement("mediawiki.user@1qvt595", function($, jQuery, require, modul
         });
     }());
 });
-mw.loader.implement("mediawiki.util@192klfe", {
-    "main": "mediawiki.util.js",
+mw.loader.implement("mediawiki.util@dzgg8", {
+    "main": "util.js",
     "files": {
-        "mediawiki.util.js": function(require, module) {
-            (function() {
-                'use strict';
-                var util, config = require('./config.json');
+        "util.js": function(require, module) {
+            'use strict';
+            var util, config = require('./config.json');
+            require('./jquery.accessKeyLabel.js');
 
-                function rawurlencode(str) {
-                    str = String(str);
-                    return encodeURIComponent(str).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/~/g, '%7E');
+            function rawurlencode(str) {
+                str = String(str);
+                return encodeURIComponent(str).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/~/g, '%7E');
+            }
+
+            function escapeIdInternal(str, mode) {
+                str = String(str);
+                switch (mode) {
+                    case 'html5':
+                        return str.replace(/ /g, '_');
+                    case 'legacy':
+                        return rawurlencode(str.replace(/ /g, '_')).replace(/%3A/g, ':').replace(/%/g, '.');
+                    default:
+                        throw new Error('Unrecognized ID escaping mode ' + mode);
                 }
-
-                function escapeIdInternal(str, mode) {
-                    str = String(str);
-                    switch (mode) {
-                        case 'html5':
-                            return str.replace(/ /g, '_');
-                        case 'legacy':
-                            return rawurlencode(str.replace(/ /g, '_')).replace(/%3A/g, ':').replace(/%/g, '.');
-                        default:
-                            throw new Error('Unrecognized ID escaping mode ' + mode);
+            }
+            util = {
+                rawurlencode: rawurlencode,
+                escapeIdForAttribute: function(str) {
+                    var mode = config.FragmentMode[0];
+                    return escapeIdInternal(str, mode);
+                },
+                escapeIdForLink: function(str) {
+                    var mode = config.FragmentMode[0];
+                    return escapeIdInternal(str, mode);
+                },
+                wikiUrlencode: function(str) {
+                    return util.rawurlencode(str).replace(/%20/g, '_').replace(/%3B/g, ';').replace(
+                        /%40/g, '@').replace(/%24/g, '$').replace(/%21/g, '!').replace(/%2A/g, '*').replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2C/g, ',').replace(/%2F/g, '/').replace(/%7E/g, '~').replace(/%3A/g, ':');
+                },
+                getUrl: function(pageName, params) {
+                    var titleFragmentStart, url, query, fragment = '',
+                        title = typeof pageName === 'string' ? pageName : mw.config.get('wgPageName');
+                    titleFragmentStart = title.indexOf('#');
+                    if (titleFragmentStart !== -1) {
+                        fragment = title.slice(titleFragmentStart + 1);
+                        title = title.slice(0, titleFragmentStart);
                     }
-                }
-                util = {
-                    rawurlencode: rawurlencode,
-                    escapeIdForAttribute: function(str) {
-                        var mode = config.FragmentMode[0];
-                        return escapeIdInternal(str, mode);
-                    },
-                    escapeIdForLink: function(str) {
-                        var mode = config.FragmentMode[0];
-                        return escapeIdInternal(str, mode);
-                    },
-                    wikiUrlencode: function(str) {
-                        return util.rawurlencode(str).replace(/%20/g, '_').replace(/%3B/g, ';').replace(
-                            /%40/g, '@').replace(/%24/g, '$').replace(/%21/g, '!').replace(/%2A/g, '*').replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2C/g, ',').replace(/%2F/g, '/').replace(/%7E/g, '~').replace(/%3A/g, ':');
-                    },
-                    getUrl: function(pageName, params) {
-                        var titleFragmentStart, url, query, fragment = '',
-                            title = typeof pageName === 'string' ? pageName : mw.config.get('wgPageName');
-                        titleFragmentStart = title.indexOf('#');
-                        if (titleFragmentStart !== -1) {
-                            fragment = title.slice(titleFragmentStart + 1);
-                            title = title.slice(0, titleFragmentStart);
-                        }
-                        if (params) {
-                            query = $.param(params);
-                        }
-                        if (query) {
-                            url = title ? util.wikiScript() + '?title=' + util.wikiUrlencode(title) + '&' + query : util.wikiScript() + '?' + query;
-                        } else {
-                            url = mw.config.get('wgArticlePath').replace('$1', util.wikiUrlencode(title).replace(/\$/g, '$$$$'));
-                        }
-                        if (fragment.length) {
-                            url += '#' + util.escapeIdForLink(fragment);
-                        }
-                        return url;
-                    },
-                    wikiScript: function(str) {
-                        str = str || 'index';
-                        if (str === 'index') {
-                            return mw.config.get('wgScript');
-                        } else if (str === 'load') {
-                            return config.LoadScript;
-                        } else {
-                            return mw.config.get('wgScriptPath') +
-                                '/' + str + '.php';
-                        }
-                    },
-                    addCSS: function(text) {
-                        var s = mw.loader.addStyleTag(text);
-                        return s.sheet || s.styleSheet || s;
-                    },
-                    getParamValue: function(param, url) {
-                        var re = new RegExp('^[^#]*[&?]' + mw.RegExp.escape(param) + '=([^&#]*)'),
-                            m = re.exec(url !== undefined ? url : location.href);
-                        if (m) {
-                            return decodeURIComponent(m[1].replace(/\+/g, '%20'));
-                        }
+                    if (params) {
+                        query = $.param(params);
+                    }
+                    if (query) {
+                        url = title ? util.wikiScript() + '?title=' + util.wikiUrlencode(title) + '&' + query : util.wikiScript() + '?' + query;
+                    } else {
+                        url = mw.config.get('wgArticlePath').replace('$1', util.wikiUrlencode(title).replace(/\$/g, '$$$$'));
+                    }
+                    if (fragment.length) {
+                        url += '#' + util.escapeIdForLink(fragment);
+                    }
+                    return url;
+                },
+                wikiScript: function(str) {
+                    str = str || 'index';
+                    if (str === 'index') {
+                        return mw.config.get('wgScript');
+                    } else if (str === 'load') {
+                        return config.LoadScript;
+                    } else {
+                        return mw.config.get('wgScriptPath') +
+                            '/' + str + '.php';
+                    }
+                },
+                addCSS: function(text) {
+                    var s = mw.loader.addStyleTag(text);
+                    return s.sheet || s.styleSheet || s;
+                },
+                getParamValue: function(param, url) {
+                    var re = new RegExp('^[^#]*[&?]' + util.escapeRegExp(param) + '=([^&#]*)'),
+                        m = re.exec(url !== undefined ? url : location.href);
+                    if (m) {
+                        return decodeURIComponent(m[1].replace(/\+/g, '%20'));
+                    }
+                    return null;
+                },
+                $content: null,
+                addPortletLink: function(portletId, href, text, id, tooltip, accesskey, nextnode) {
+                    var item, link, $portlet, portlet, portletDiv, ul, next;
+                    if (!portletId) {
                         return null;
-                    },
-                    $content: null,
-                    addPortletLink: function(portletId, href, text, id, tooltip, accesskey, nextnode) {
-                        var item, link, $portlet, portlet, portletDiv, ul, next;
-                        if (!portletId) {
-                            return null;
-                        }
-                        portlet = document.getElementById(portletId);
-                        if (!portlet) {
-                            return null;
-                        }
-                        link = document.createElement('a');
-                        link.href = href;
-                        link.textContent = text;
-                        if (tooltip) {
-                            link.title = tooltip;
-                        }
-                        if (accesskey) {
-                            link.accessKey = accesskey;
-                        }
-                        $portlet = $(portlet);
-                        $portlet.removeClass('emptyPortlet');
-                        if ($portlet.hasClass('vectorTabs')) {
-                            item = $('<li>').append($('<span>').append(link)[0])[0];
-                        } else {
-                            item = $('<li>').append(link)[0];
-                        }
-                        if (id) {
-                            item.id = id;
-                        }
-                        ul = portlet.querySelector('ul');
-                        if (!ul) {
-                            ul = document.createElement('ul');
-                            portletDiv = portlet
-                                .querySelector('div');
-                            if (portletDiv) {
-                                portletDiv.appendChild(ul);
-                            } else {
-                                portlet.appendChild(ul);
-                            }
-                        }
-                        if (nextnode && (typeof nextnode === 'string' || nextnode.nodeType || nextnode.jquery)) {
-                            nextnode = $(ul).find(nextnode);
-                            if (nextnode.length === 1 && nextnode[0].parentNode === ul) {
-                                nextnode.before(item);
-                                next = !0;
-                            }
-                        }
-                        if (!next) {
-                            ul.appendChild(item);
-                        }
-                        if (accesskey) {
-                            $(link).updateTooltipAccessKeys();
-                        }
-                        return item;
-                    },
-                    validateEmail: function(mailtxt) {
-                        var rfc5322Atext, rfc1034LdhStr, html5EmailRegexp;
-                        if (mailtxt === '') {
-                            return null;
-                        }
-                        rfc5322Atext = 'a-z0-9!#$%&\'*+\\-/=?^_`{|}~';
-                        rfc1034LdhStr = 'a-z0-9\\-';
-                        html5EmailRegexp = new RegExp('^' + '[' + rfc5322Atext + '\\.]+' + '@' + '[' + rfc1034LdhStr + ']+' + '(?:\\.[' + rfc1034LdhStr + ']+)*' + '$', 'i');
-                        return (mailtxt.match(html5EmailRegexp) !== null);
-                    },
-                    isIPv4Address: function(address, allowBlock) {
-                        var block, RE_IP_BYTE, RE_IP_ADD;
-                        if (typeof address !== 'string') {
-                            return false;
-                        }
-                        block = allowBlock ? '(?:\\/(?:3[0-2]|[12]?\\d))?' : '';
-                        RE_IP_BYTE = '(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|0?[0-9]?[0-9])';
-                        RE_IP_ADD = '(?:' + RE_IP_BYTE +
-                            '\\.){3}' + RE_IP_BYTE;
-                        return (new RegExp('^' + RE_IP_ADD + block + '$').test(address));
-                    },
-                    isIPv6Address: function(address, allowBlock) {
-                        var block, RE_IPV6_ADD;
-                        if (typeof address !== 'string') {
-                            return false;
-                        }
-                        block = allowBlock ? '(?:\\/(?:12[0-8]|1[01][0-9]|[1-9]?\\d))?' : '';
-                        RE_IPV6_ADD = '(?:' + ':(?::|(?::' + '[0-9A-Fa-f]{1,4}' + '){1,7})' + '|' + '[0-9A-Fa-f]{1,4}' + '(?::' + '[0-9A-Fa-f]{1,4}' + '){0,6}::' + '|' + '[0-9A-Fa-f]{1,4}' + '(?::' + '[0-9A-Fa-f]{1,4}' + '){7}' + ')';
-                        if (new RegExp('^' + RE_IPV6_ADD + block + '$').test(address)) {
-                            return true;
-                        }
-                        RE_IPV6_ADD = '[0-9A-Fa-f]{1,4}' + '(?:::?' + '[0-9A-Fa-f]{1,4}' + '){1,6}';
-                        return (new RegExp('^' + RE_IPV6_ADD + block + '$').test(address) && /::/.test(address) && !/::.*::/.test(address));
-                    },
-                    isIPAddress: function(address, allowBlock) {
-                        return util.isIPv4Address(address, allowBlock) || util.isIPv6Address(address, allowBlock);
                     }
-                };
-                if (window.QUnit) {
-                    util.setOptionsForTest = function(opts) {
-                        var oldConfig = config;
-                        config = $.extend({}, config, opts);
-                        return oldConfig;
-                    };
+                    portlet = document.getElementById(portletId);
+                    if (!portlet) {
+                        return null;
+                    }
+                    link = document.createElement('a');
+                    link.href = href;
+                    link.textContent = text;
+                    if (tooltip) {
+                        link.title = tooltip;
+                    }
+                    if (accesskey) {
+                        link.accessKey = accesskey;
+                    }
+                    $portlet = $(portlet);
+                    $portlet.removeClass('emptyPortlet');
+                    if ($portlet.hasClass('vectorTabs')) {
+                        item = $('<li>').append($('<span>').append(link)[0])[0];
+                    } else {
+                        item = $('<li>').append(link)[0];
+                    }
+                    if (id) {
+                        item.id = id;
+                    }
+                    ul = portlet.querySelector('ul');
+                    if (!ul) {
+                        ul = document.createElement('ul');
+                        portletDiv =
+                            portlet.querySelector('div');
+                        if (portletDiv) {
+                            portletDiv.appendChild(ul);
+                        } else {
+                            portlet.appendChild(ul);
+                        }
+                    }
+                    if (nextnode && (typeof nextnode === 'string' || nextnode.nodeType || nextnode.jquery)) {
+                        nextnode = $(ul).find(nextnode);
+                        if (nextnode.length === 1 && nextnode[0].parentNode === ul) {
+                            nextnode.before(item);
+                            next = !0;
+                        }
+                    }
+                    if (!next) {
+                        ul.appendChild(item);
+                    }
+                    if (accesskey) {
+                        $(link).updateTooltipAccessKeys();
+                    }
+                    return item;
+                },
+                validateEmail: function(mailtxt) {
+                    var rfc5322Atext, rfc1034LdhStr, html5EmailRegexp;
+                    if (mailtxt === '') {
+                        return null;
+                    }
+                    rfc5322Atext = 'a-z0-9!#$%&\'*+\\-/=?^_`{|}~';
+                    rfc1034LdhStr = 'a-z0-9\\-';
+                    html5EmailRegexp = new RegExp('^' + '[' + rfc5322Atext + '\\.]+' + '@' + '[' + rfc1034LdhStr + ']+' + '(?:\\.[' + rfc1034LdhStr + ']+)*' + '$', 'i');
+                    return (mailtxt.match(html5EmailRegexp) !== null);
+                },
+                isIPv4Address: function(address, allowBlock) {
+                    var block, RE_IP_BYTE, RE_IP_ADD;
+                    if (typeof address !== 'string') {
+                        return false;
+                    }
+                    block = allowBlock ? '(?:\\/(?:3[0-2]|[12]?\\d))?' : '';
+                    RE_IP_BYTE = '(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|0?[0-9]?[0-9])';
+                    RE_IP_ADD = '(?:' +
+                        RE_IP_BYTE + '\\.){3}' + RE_IP_BYTE;
+                    return (new RegExp('^' + RE_IP_ADD + block + '$').test(address));
+                },
+                isIPv6Address: function(address, allowBlock) {
+                    var block, RE_IPV6_ADD;
+                    if (typeof address !== 'string') {
+                        return false;
+                    }
+                    block = allowBlock ? '(?:\\/(?:12[0-8]|1[01][0-9]|[1-9]?\\d))?' : '';
+                    RE_IPV6_ADD = '(?:' + ':(?::|(?::' + '[0-9A-Fa-f]{1,4}' + '){1,7})' + '|' + '[0-9A-Fa-f]{1,4}' + '(?::' + '[0-9A-Fa-f]{1,4}' + '){0,6}::' + '|' + '[0-9A-Fa-f]{1,4}' + '(?::' + '[0-9A-Fa-f]{1,4}' + '){7}' + ')';
+                    if (new RegExp('^' + RE_IPV6_ADD + block + '$').test(address)) {
+                        return true;
+                    }
+                    RE_IPV6_ADD = '[0-9A-Fa-f]{1,4}' + '(?:::?' + '[0-9A-Fa-f]{1,4}' + '){1,6}';
+                    return (new RegExp('^' + RE_IPV6_ADD + block + '$').test(address) && /::/.test(address) && !/::.*::/.test(address));
+                },
+                isIPAddress: function(address, allowBlock) {
+                    return util.isIPv4Address(address, allowBlock) || util.isIPv6Address(address, allowBlock);
+                },
+                escapeRegExp: function(str) {
+                    return str.replace(/([\\{}()|.?*+\-^$\[\]])/g, '\\$1');
                 }
+            };
+            mw.RegExp = {};
+            mw.log.deprecate(mw.RegExp, 'escape', util.escapeRegExp,
+                'Use mw.util.escapeRegExp() instead.', 'mw.RegExp.escape');
+            if (window.QUnit) {
+                util.setOptionsForTest = function(opts) {
+                    var oldConfig = config;
+                    config = $.extend({}, config, opts);
+                    return oldConfig;
+                };
+            }
 
-                function init() {
-                    util.$content = (function() {
-                        var i, l, $node, selectors;
-                        selectors = ['.mw-body-primary', '.mw-body', '#mw-content-text'];
-                        for (i = 0, l = selectors.length; i < l; i++) {
-                            $node = $(selectors[i]);
-                            if ($node.length) {
-                                return $node.first();
+            function init() {
+                util.$content = (function() {
+                    var i, l, $node, selectors;
+                    selectors = ['.mw-body-primary', '.mw-body', '#mw-content-text'];
+                    for (i = 0, l = selectors.length; i < l; i++) {
+                        $node = $(selectors[i]);
+                        if ($node.length) {
+                            return $node.first();
+                        }
+                    }
+                    return $('body');
+                }());
+            }
+            $(init);
+            mw.util = util;
+            module.exports = util;
+        },
+        "jquery.accessKeyLabel.js": function(require, module) {
+            var cachedAccessKeyModifiers, useTestPrefix = !1,
+                labelable = 'button, input, textarea, keygen, meter, output, progress, select';
+
+            function getAccessKeyModifiers(ua) {
+                var profile, accessKeyModifiers;
+                if (!ua && cachedAccessKeyModifiers) {
+                    return cachedAccessKeyModifiers;
+                }
+                profile = $.client.profile(ua);
+                switch (profile.name) {
+                    case 'chrome':
+                    case 'opera':
+                        if (profile.name === 'opera' && profile.versionNumber < 15) {
+                            accessKeyModifiers = ['shift', 'esc'];
+                        } else if (profile.platform === 'mac') {
+                            accessKeyModifiers = ['ctrl', 'option'];
+                        } else {
+                            accessKeyModifiers = ['alt', 'shift'];
+                        }
+                        break;
+                    case 'firefox':
+                    case 'iceweasel':
+                        if (profile.versionBase < 2) {
+                            accessKeyModifiers = ['alt'];
+                        } else {
+                            if (profile.platform === 'mac') {
+                                if (profile.versionNumber < 14) {
+                                    accessKeyModifiers = ['ctrl'];
+                                } else {
+                                    accessKeyModifiers = ['ctrl', 'option'];
+                                }
+                            } else {
+                                accessKeyModifiers = ['alt', 'shift'];
                             }
                         }
-                        return $('body');
-                    }());
+                        break;
+                    case 'safari':
+                    case 'konqueror':
+                        if (profile.platform === 'win') {
+                            accessKeyModifiers = ['alt'];
+                        } else {
+                            if (profile.layoutVersion > 526) {
+                                accessKeyModifiers = ['ctrl', profile.platform === 'mac' ? 'option' : 'alt'];
+                            } else {
+                                accessKeyModifiers = ['ctrl'];
+                            }
+                        }
+                        break;
+                    case 'msie':
+                    case 'edge':
+                        accessKeyModifiers = ['alt'];
+                        break;
+                    default:
+                        accessKeyModifiers = profile.platform === 'mac' ? ['ctrl'] : ['alt'];
+                        break;
                 }
-                $(init);
-                mw.util = util;
-                module.exports = util;
-            }());
+                if (!ua) {
+                    cachedAccessKeyModifiers = accessKeyModifiers;
+                }
+                return accessKeyModifiers;
+            }
+
+            function getAccessKeyLabel(element) {
+                if (!element.accessKey) {
+                    return '';
+                }
+                if (!useTestPrefix && element.accessKeyLabel) {
+                    return element.accessKeyLabel;
+                }
+                return (useTestPrefix ? 'test' : getAccessKeyModifiers().join('-')) +
+                    '-' + element.accessKey;
+            }
+
+            function updateTooltipOnElement(element, titleElement) {
+                var oldTitle, parts, regexp, newTitle, accessKeyLabel, separatorMsg = mw.message('word-separator').plain();
+                oldTitle = titleElement.title;
+                if (!oldTitle) {
+                    return;
+                }
+                parts = (separatorMsg + mw.message('brackets').plain()).split('$1');
+                regexp = new RegExp(parts.map(mw.util.escapeRegExp).join('.*?') + '$');
+                newTitle = oldTitle.replace(regexp, '');
+                accessKeyLabel = getAccessKeyLabel(element);
+                if (accessKeyLabel) {
+                    newTitle += separatorMsg + mw.message('brackets', accessKeyLabel).plain();
+                }
+                if (oldTitle !== newTitle) {
+                    titleElement.title = newTitle;
+                }
+            }
+
+            function updateTooltip(element) {
+                var id, $element, $label, $labelParent;
+                updateTooltipOnElement(element, element);
+                $element = $(element);
+                if ($element.is(labelable)) {
+                    id = element.id.replace(/"/g, '\\"');
+                    if (id) {
+                        $label = $('label[for="' + id + '"]');
+                        if ($label.length === 1) {
+                            updateTooltipOnElement(element, $label[0]);
+                        }
+                    }
+                    $labelParent = $element.parents('label');
+                    if ($labelParent.length === 1) {
+                        updateTooltipOnElement(element, $labelParent[0]);
+                    }
+                }
+            }
+            $.fn.
+            updateTooltipAccessKeys = function() {
+                return this.each(function() {
+                    updateTooltip(this);
+                });
+            };
+            $.fn.updateTooltipAccessKeys.getAccessKeyModifiers = getAccessKeyModifiers;
+            $.fn.updateTooltipAccessKeys.getAccessKeyLabel = getAccessKeyLabel;
+            $.fn.updateTooltipAccessKeys.getAccessKeyPrefix = function(ua) {
+                return getAccessKeyModifiers(ua).join('-') + '-';
+            };
+            $.fn.updateTooltipAccessKeys.setTestMode = function(mode) {
+                useTestPrefix = mode;
+            };
         },
         "config.json": {
             "FragmentMode": ["html5", "legacy"],
             "LoadScript": "/w/load.php"
         }
     }
+}, {}, {
+    "brackets": "[$1]",
+    "word-separator": " "
 });
-mw.loader.implement("mediawiki.viewport@0cme4d2", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.viewport@cme4d", function($, jQuery, require, module) {
     (function() {
         'use strict';
         var viewport = {
@@ -15831,13 +16511,14 @@ mw.loader.implement("mediawiki.viewport@0cme4d2", function($, jQuery, require, m
                 viewport.left -= threshold;
                 viewport.right += threshold;
                 viewport.bottom += threshold;
-                return this.isElementInViewport(el, viewport);
+                return this
+                    .isElementInViewport(el, viewport);
             }
         };
         mw.viewport = viewport;
     }());
 });
-mw.loader.implement("mediawiki.libs.pluralruleparser@0zqfng3", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.libs.pluralruleparser@zqfng", function($, jQuery, require, module) {
     (function(root, factory) {
         if (typeof define === 'function' && define.amd) {
             define(factory);
@@ -16209,7 +16890,7 @@ mw.loader.implement("mediawiki.libs.pluralruleparser@0zqfng3", function($, jQuer
     module.exports = window.pluralRuleParser;
     mw.libs.pluralRuleParser = window.pluralRuleParser;
 });
-mw.loader.implement("mediawiki.page.startup@0aw03it", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.page.startup@aw03i", function($, jQuery, require, module) {
     (function() {
         if (mw.config.get('wgBreakFrames')) {
             if (window.top !== window.self) {
@@ -16226,7 +16907,7 @@ mw.loader.implement("mediawiki.page.startup@0aw03it", function($, jQuery, requir
         });
     }());
 });
-mw.loader.implement("mediawiki.template.mustache@1o9pbhg", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.template.mustache@1o9pb", function($, jQuery, require, module) {
     (function defineMustache(global, factory) {
         if (typeof exports === 'object' && exports && typeof exports.nodeName !== 'string') {
             factory(exports);
@@ -16632,7 +17313,7 @@ mw.loader.implement("mediawiki.template.mustache@1o9pbhg", function($, jQuery, r
         });
     }());
 });
-mw.loader.implement("mediawiki.template.regexp@1h7vja1", function($, jQuery, require, module) {
+mw.loader.implement("mediawiki.template.regexp@1h7vj", function($, jQuery, require, module) {
     mw.template.registerCompiler('regexp', {
         compile: function(src) {
             return {
@@ -16643,10 +17324,10 @@ mw.loader.implement("mediawiki.template.regexp@1h7vja1", function($, jQuery, req
         }
     });
 });
-mw.loader.implement("mediawiki.ui.anchor@06mkbvx", null, {
+mw.loader.implement("mediawiki.ui.anchor@6mkbv", null, {
     "css": [".mw-ui-anchor.mw-ui-progressive{color:#3366cc}.mw-ui-anchor.mw-ui-progressive:hover{color:#6a8fda}.mw-ui-anchor.mw-ui-progressive:focus,.mw-ui-anchor.mw-ui-progressive:active{color:#254a95;outline:0}.mw-ui-anchor.mw-ui-progressive.mw-ui-quiet{color:#54595d;text-decoration:none}.mw-ui-anchor.mw-ui-progressive.mw-ui-quiet:hover{color:#3366cc}.mw-ui-anchor.mw-ui-progressive.mw-ui-quiet:focus,.mw-ui-anchor.mw-ui-progressive.mw-ui-quiet:active{color:#254a95}.mw-ui-anchor.mw-ui-destructive{color:#dd3333}.mw-ui-anchor.mw-ui-destructive:hover{color:#e76e6e}.mw-ui-anchor.mw-ui-destructive:focus,.mw-ui-anchor.mw-ui-destructive:active{color:#ae1d1d;outline:0}.mw-ui-anchor.mw-ui-destructive.mw-ui-quiet{color:#54595d;text-decoration:none}.mw-ui-anchor.mw-ui-destructive.mw-ui-quiet:hover{color:#dd3333}.mw-ui-anchor.mw-ui-destructive.mw-ui-quiet:focus,.mw-ui-anchor.mw-ui-destructive.mw-ui-quiet:active{color:#ae1d1d}"]
 });
-mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) {
+mw.loader.implement("mobile.init@1o02c", function($, jQuery, require, module) {
     this.mfModules = this.mfModules || {}, this.mfModules["mobile.init"] = (window.webpackJsonp = window.webpackJsonp || []).push([
         [12], {
             "./src/mobile.init/BetaOptInPanel.js": function(e, t, n) {
@@ -16678,14 +17359,14 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                     })(e)
                 }
 
-                function l(e, t) {
-                    return (l = Object.setPrototypeOf || function(e, t) {
+                function s(e, t) {
+                    return (s = Object.setPrototypeOf || function(e, t) {
                         return e.__proto__ = t, e
                     })(e, t)
                 }
-                var s = n("./src/mobile.startup/Button.js"),
-                    u = n("./src/mobile.startup/util.js"),
-                    c = n("./src/mobile.startup/View.js"),
+                var l = n("./src/mobile.startup/Button.js"),
+                    c = n("./src/mobile.startup/util.js"),
+                    u = n("./src/mobile.startup/View.js"),
                     d = mw.user,
                     m = function(e) {
                         "use strict";
@@ -16693,7 +17374,7 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                         function t(e) {
                             return function(e, t) {
                                 if (!(e instanceof t)) throw new TypeError("Cannot call a class as a function")
-                            }(this, t), r(this, a(t).call(this, u.extend({
+                            }(this, t), r(this, a(t).call(this, c.extend({
                                 isTemplateMode: !0,
                                 events: {
                                     "click .optin": "_onOptin",
@@ -16709,8 +17390,8 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                                         writable: !0,
                                         configurable: !0
                                     }
-                                }), t && l(e, t)
-                            }(t, c),
+                                }), t && s(e, t)
+                            }(t, u),
                             function(e, t, n) {
                                 t && i(e.prototype, t), n && i(e, n)
                             }(t, [{
@@ -16728,20 +17409,20 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                             }, {
                                 key: "template",
                                 get: function() {
-                                    return u.template('\n\t<div class="beta-opt-in-panel panel panel-inline visible">\n\t\t<form class="message content" action="{{postUrl}}" method="POST">\n\t\t\t<p>{{text}}</p>\n\t\t\t<input type="hidden" name="updateSingleOption" value="enableBeta">\n\t\t\t<input type="hidden" name="enableBeta" value="true">\n\t\t\t<input type="hidden" name="token" value="{{editToken}}">\n\t\t</form>\n\t</div>\n\t')
+                                    return c.template('\n\t<div class="beta-opt-in-panel panel panel-inline visible">\n\t\t<form class="message content" action="{{postUrl}}" method="POST">\n\t\t\t<p>{{text}}</p>\n\t\t\t<input type="hidden" name="updateSingleOption" value="enableBeta">\n\t\t\t<input type="hidden" name="enableBeta" value="true">\n\t\t\t<input type="hidden" name="token" value="{{editToken}}">\n\t\t</form>\n\t</div>\n\t')
                                 }
                             }, {
                                 key: "defaults",
                                 get: function() {
-                                    return u.extend({}, c.prototype.defaults, {
+                                    return c.extend({}, u.prototype.defaults, {
                                         postUrl: void 0,
                                         editToken: d.tokens.get("editToken"),
                                         text: mw.msg("mobile-frontend-panel-betaoptin-msg"),
-                                        buttons: [new s({
+                                        buttons: [new l({
                                             progressive: !0,
                                             additionalClassNames: "optin",
                                             label: mw.msg("mobile-frontend-panel-ok")
-                                        }), new s({
+                                        }), new l({
                                             additionalClassNames: "cancel",
                                             label: mw.msg("mobile-frontend-panel-cancel")
                                         })]
@@ -16757,17 +17438,17 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                     r = mw.loader.require("mediawiki.router"),
                     a = n(
                         "./src/mobile.init/editorLoadingOverlay.js"),
-                    l = n("./src/mobile.startup/OverlayManager.js").getSingleton(),
-                    s = $("#ca-edit, .mw-editsection a, .edit-link"),
-                    u = mw.user,
-                    c = n("./src/mobile.startup/toast.js"),
+                    s = n("./src/mobile.startup/OverlayManager.js").getSingleton(),
+                    l = $("#ca-edit, .mw-editsection a, .edit-link"),
+                    c = mw.user,
+                    u = n("./src/mobile.startup/toast.js"),
                     d = n("./src/mobile.startup/CtaDrawer.js"),
                     m = /MSIE \d\./.test(navigator.userAgent),
                     g = mw.config.get("wgPageContentModel"),
-                    f = r.isSupported() && !m,
-                    p = mw.config.get("wgVisualEditorConfig"),
-                    b = mw.config.get("wgUserEditCount"),
-                    w = /^\/editor\/(\d+|all)$/;
+                    p = r.isSupported() && !m,
+                    f = mw.config.get("wgVisualEditorConfig"),
+                    w = mw.config.get("wgUserEditCount"),
+                    b = /^\/editor\/(\d+|all)$/;
 
                 function v(e) {
                     var t = new mw.Uri(this.href).query.section || "all";
@@ -16775,27 +17456,27 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                 }
 
                 function h(e, t, n) {
-                    var c, d, m, g = 0 === e.id;
-                    s.on("click", v), l.add(w, function(r) {
-                            var s, c, d, f, w = window.innerWidth - document.documentElement.clientWidth,
+                    var u, d, m, g = 0 === e.id;
+                    l.on("click", v), s.add(b, function(r) {
+                            var l, u, d, p, b = window.innerWidth - document.documentElement.clientWidth,
                                 v = window.pageYOffset,
                                 h = $("#mw-content-text"),
                                 y = {
-                                    overlayManager: l,
+                                    overlayManager: s,
                                     currentPageHTMLParser: n,
                                     fakeScroll: 0,
                                     api: new mw.Api,
                                     licenseMsg: t.getLicenseMsg(),
                                     title: e.title,
                                     titleObj: e.titleObj,
-                                    isAnon: u.isAnon(),
+                                    isAnon: c.isAnon(),
                                     isNewPage: g,
-                                    editCount: b,
+                                    editCount: w,
                                     oldId: mw.util.getParamValue("oldid"),
                                     contentLang: h.attr("lang"),
                                     contentDir: h.attr(
                                         "dir"),
-                                    sessionId: u.generateRandomSessionId()
+                                    sessionId: c.generateRandomSessionId()
                                 },
                                 k = mw.util.getParamValue("redlink") ? "new" : "click";
 
@@ -16809,8 +17490,8 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                                 })
                             }
 
-                            function P() {
-                                var t = !!p,
+                            function j() {
+                                var t = !!f,
                                     n = function() {
                                         var e = mw.storage.get("preferredEditor");
                                         if (e) return e;
@@ -16824,7 +17505,7 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                                         }
                                         return "SourceEditor"
                                     }(),
-                                    o = p && p.namespaces || [];
+                                    o = f && f.namespaces || [];
                                 return t && e.isWikiText() && -1 !== o.indexOf(mw.config.get("wgNamespaceNumber")) && "translation" !== mw.config.get("wgTranslatePageTranslation") && ("VisualEditor" === n || "VisualEditor" === m) && "SourceEditor" !== m
                             }
 
@@ -16834,18 +17515,18 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                                         "mobile.editor.overlay/SourceEditorOverlay"))(y)
                                 })
                             }
-                            return "all" !== r && (y.sectionId = e.isWikiText() ? +r : null), s = i.Deferred(), d = a(function() {
+                            return "all" !== r && (y.sectionId = e.isWikiText() ? +r : null), l = i.Deferred(), d = a(function() {
                                 var e, t, n, o, i;
                                 $(document.body).addClass("ve-loading"), e = $("#mw-mf-page-center"), t = $("#content"), n = "0" === r || "all" === r ? $("#bodyContent") : $('[data-section="' + r + '"]').closest("h1, h2, h3, h4, h5, h6"), e.css({
-                                    "padding-right": "+=" + w,
+                                    "padding-right": "+=" + b,
                                     "box-sizing": "border-box"
-                                }), e.prop("scrollTop", v), o = n[0].getBoundingClientRect().top, o -= 48, P() ? (i = !0 === p.enableVisualSectionEditing || "mobile" === p.enableVisualSectionEditing, ("0" === r || "all" === r || i) && (o -= 16)) : "0" !== r && "all" !== r || (o -= 16), t.css({
+                                }), e.prop("scrollTop", v), o = n[0].getBoundingClientRect().top, o -= 48, j() ? (i = !0 === f.enableVisualSectionEditing || "mobile" === f.enableVisualSectionEditing, ("0" === r || "all" === r || i) && (o -= 16)) : "0" !== r && "all" !== r || (o -= 16), t.css({
                                     transform: "translate( 0, " + -o + "px )",
                                     "padding-bottom": "+=" + o,
                                     "margin-bottom": "-=" + o
-                                }), y.fakeScroll = o, setTimeout(s.resolve, 500)
+                                }), y.fakeScroll = o, setTimeout(l.resolve, 500)
                             }, function() {
-                                c && c.abort && c.abort(), $("#content").css({
+                                u && u.abort && u.abort(), $("#content").css({
                                     transform: "",
                                     "padding-bottom": "",
                                     "margin-bottom": ""
@@ -16853,15 +17534,15 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                                     "padding-right": "",
                                     "box-sizing": ""
                                 }), $(document.body).removeClass("ve-loading")
-                            }), P() ? (S("visualeditor"), mw.hook(
+                            }), j() ? (S("visualeditor"), mw.hook(
                                 "mobileFrontend.editorOpening").fire(), y.mode = "visual", y.dataPromise = mw.loader.using("ext.visualEditor.targetLoader").then(function() {
-                                return c = mw.libs.ve.targetLoader.requestPageData(y.mode, y.titleObj.getPrefixedDb(), {
+                                return u = mw.libs.ve.targetLoader.requestPageData(y.mode, y.titleObj.getPrefixedDb(), {
                                     sessionStore: !0,
                                     section: void 0 === y.sectionId ? null : y.sectionId,
                                     oldId: y.oldId || void 0,
                                     targetName: "mobile"
                                 })
-                            }), f = mw.loader.using("ext.visualEditor.targetLoader").then(function() {
+                            }), p = mw.loader.using("ext.visualEditor.targetLoader").then(function() {
                                 return mw.libs.ve.targetLoader.addPlugin("mobile.editor.ve"), mw.libs.ve.targetLoader.loadModules(y.mode)
                             }).then(function() {
                                 var e = o.require("mobile.editor.overlay/VisualEditorOverlay"),
@@ -16869,19 +17550,19 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                                 return y.SourceEditorOverlay = t, new e(y)
                             }, function() {
                                 return O()
-                            })) : f = O(), i.Promise.all([f, s]).then(function(e) {
+                            })) : p = O(), i.Promise.all([p, l]).then(function(e) {
                                 e.getLoadingPromise().then(function() {
-                                    var t = l.stack[0];
-                                    t && t.overlay === d && l.replaceCurrent(e)
+                                    var t = s.stack[0];
+                                    t && t.overlay === d && s.replaceCurrent(e)
                                 }, function(e) {
-                                    l.router.back(), e.show()
+                                    s.router.back(), e.show()
                                 })
                             }), d
                         }), $("#ca-edit a").prop("href", function(e, t) {
                             var n = new mw.Uri(t);
                             return n.query.section = 0, n.toString()
                         }), r.getPath() || !
-                        mw.util.getParamValue("veaction") && "edit" !== mw.util.getParamValue("action") || ("edit" === mw.util.getParamValue("veaction") ? m = "VisualEditor" : "editsource" === mw.util.getParamValue("veaction") && (m = "SourceEditor"), d = "#/editor/" + (mw.util.getParamValue("section") || "edit" === mw.util.getParamValue("action") && "all" || "0"), window.history && history.pushState ? (delete(c = mw.Uri()).query.action, delete c.query.veaction, delete c.query.section, history.replaceState(null, document.title, c.toString() + d)) : r.navigate(d))
+                        mw.util.getParamValue("veaction") && "edit" !== mw.util.getParamValue("action") || ("edit" === mw.util.getParamValue("veaction") ? m = "VisualEditor" : "editsource" === mw.util.getParamValue("veaction") && (m = "SourceEditor"), d = "#/editor/" + (mw.util.getParamValue("section") || "edit" === mw.util.getParamValue("action") && "all" || "0"), window.history && history.pushState ? (delete(u = mw.Uri()).query.action, delete u.query.veaction, delete u.query.section, history.replaceState(null, document.title, u.toString() + d)) : r.navigate(d))
                 }
 
                 function y(e, t, n) {
@@ -16895,24 +17576,24 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                                 warning: "mobile-frontend-watchlist-signup-action"
                             }
                         });
-                        s.on("click", function(t) {
+                        l.on("click", function(t) {
                             return e.show(), t.preventDefault(), e
-                        }), r.route(w, function() {
+                        }), r.route(b, function() {
                             e.show()
                         }), r.checkRoute()
                     }() : k(o ? mw.msg("apierror-readonly") : mw.msg("mobile-frontend-editor-disabled")))
                 }
 
                 function k(e) {
-                    s.on("click", function(t) {
-                        c.show(e), t.preventDefault()
-                    }), r.route(w, function() {
-                        c.show(e)
+                    l.on("click", function(t) {
+                        u.show(e), t.preventDefault()
+                    }), r.route(b, function() {
+                        u.show(e)
                     }), r.checkRoute()
                 }
                 e.exports = function(e, t, n) {
                     var o = 0 === e.id;
-                    "wikitext" === g && (mw.util.getParamValue("undo") || f && (e.inNamespace("file") && o ? k(mw.msg("mobile-frontend-editor-uploadenable")) : y(e, t, n)))
+                    "wikitext" === g && (mw.util.getParamValue("undo") || p && (e.inNamespace("file") && o ? k(mw.msg("mobile-frontend-editor-uploadenable")) : y(e, t, n)))
                 }
             },
             "./src/mobile.init/editorLoadingOverlay.js": function(e, t, n) {
@@ -16939,48 +17620,50 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
             },
             "./src/mobile.init/mobile.init.js": function(e, t, n) {
                 var o, i = mw.storage,
-                    r = mw.config.get("skin"),
-                    a = mw.config.get("wgMFIsPageContentModelEditable"),
+                    r = n("./src/mobile.init/toggling.js"),
+                    a = mw.config.get("skin"),
+                    s = mw.config.get("wgMFIsPageContentModelEditable"),
                     l = n("./src/mobile.init/editor.js"),
-                    s = n("./src/mobile.startup/currentPage.js")(),
+                    c = n("./src/mobile.startup/currentPage.js")(),
                     u = n("./src/mobile.startup/currentPageHTMLParser.js")(),
-                    c = n("./src/mobile.init/BetaOptInPanel.js"),
-                    d = mw.util,
-                    m = n("./src/mobile.startup/util.js"),
-                    g = m.getWindow(),
-                    f = m.getDocument(),
-                    p = mw.user,
+                    d = n("./src/mobile.init/BetaOptInPanel.js"),
+                    m = mw.util,
+                    g = n("./src/mobile.startup/util.js"),
+                    p = g.getWindow(),
+                    f = g.getDocument(),
+                    w = mw.user,
                     b = n("./src/mobile.startup/context.js"),
-                    w = mw.experiments,
-                    v = mw.config.get("wgMFExperiments") || {},
-                    h = n("./src/mobile.startup/Skin.js"),
-                    y = n("./src/mobile.startup/eventBusSingleton.js"),
-                    k = n("./src/mobile.startup/amcOutreach/amcOutreach.js");
+                    v = mw.experiments,
+                    h = mw.config.get("wgMFExperiments") || {},
+                    y = n("./src/mobile.startup/Skin.js"),
+                    k = n("./src/mobile.startup/eventBusSingleton.js"),
+                    S = n("./src/mobile.startup/amcOutreach/amcOutreach.js");
 
-                function S(e, t) {
+                function j(e, t) {
                     return function() {
                         return [e.apply(this, arguments), t.apply(this, arguments)]
                     }
                 }
 
-                function P() {
+                function O() {
                     var e = i.get("userFontSize", "regular");
                     f.addClass("mf-font-size-" + e)
                 }
-                o = h.getSingleton(), g.on("resize", S($.debounce(100, function() {
-                    y.emit("resize")
+                o = y.getSingleton(), p.on("resize", j($.debounce(100, function() {
+                    k.emit("resize")
                 }), $.throttle(200, function() {
-                    y.emit("resize:throttled")
-                }))).on("scroll", S($.debounce(100, function() {
-                    y.emit("scroll")
-                }), $.throttle(200, function() {
-                    y.emit("scroll:throttled")
-                }))), g.on("pageshow", function() {
-                    P()
-                }), P(), v.betaoptin && function(e, t, n) {
-                    var o, r, a, l = i.get("mobile-betaoptin-token");
-                    !1 === l || "~" === l || t.isMainPage() || t.inNamespace("special") || (l || (l = p.generateRandomSessionId(), i.set("mobile-betaoptin-token", l)), r = "stable" === b.getMode(), a = "A" === w.getBucket(e, l), r && (a || d.getParamValue("debug")) && (o = new c({
-                        postUrl: d.getUrl("Special:MobileOptions", {
+                    k.emit("resize:throttled")
+                }))).on("scroll", j($.debounce(100, function() {
+                    k.emit("scroll")
+                }), $.throttle(200,
+                    function() {
+                        k.emit("scroll:throttled")
+                    }))), p.on("pageshow", function() {
+                    O()
+                }), O(), h.betaoptin && function(e, t, n) {
+                    var o, r, a, s = i.get("mobile-betaoptin-token");
+                    !1 === s || "~" === s || t.isMainPage() || t.inNamespace("special") || (s || (s = w.generateRandomSessionId(), i.set("mobile-betaoptin-token", s)), r = "stable" === b.getMode(), a = "A" === v.getBucket(e, s), r && (a || m.getParamValue("debug")) && (o = new d({
+                        postUrl: m.getUrl("Special:MobileOptions", {
                             returnto: t.title
                         }),
                         onCancel: function(e) {
@@ -16989,10 +17672,26 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
                     })).appendTo(n.getLeadSectionElement()), mw.track("mobile.betaoptin", {
                         isPanelShown: void 0 !== o
                     }))
-                }(v.betaoptin, s, u), mw.requestIdleCallback(function() {
-                    k.loadCampaign().showIfEligible(k.ACTIONS.onLoad)
-                }), window.console && window.console.log && window.console.log.apply && mw.config.get("wgMFEnableJSConsoleRecruitment") && console.log(mw.msg("mobile-frontend-console-recruit")), !s.inNamespace("special") && a && "minerva" === r && null !== b.getMode() && l(s, u, o), mw.mobileFrontend.deprecate("mobile.init/skin", o,
-                    "instance of mobile.startup/Skin. Minerva should have no dependencies on mobile.init")
+                }(h.betaoptin, c, u), mw.requestIdleCallback(function() {
+                    S.loadCampaign().showIfEligible(S.ACTIONS.onLoad)
+                }), window.console && window.console.log && window.console.log.apply && mw.config.get("wgMFEnableJSConsoleRecruitment") && console.log(mw.msg("mobile-frontend-console-recruit")), !c.inNamespace("special") && s && "minerva" === a && null !== b.getMode() && l(c, u, o), r(), mw.mobileFrontend.deprecate(
+                    "mobile.init/skin", o, "instance of mobile.startup/Skin. Minerva should have no dependencies on mobile.init")
+            },
+            "./src/mobile.init/toggling.js": function(e, t, n) {
+                e.exports = function() {
+                    var e = $("#mw-content-text > .mw-parser-output"),
+                        t = n("./src/mobile.startup/currentPage.js")(),
+                        o = n("./src/mobile.startup/Toggler.js"),
+                        i = n("./src/mobile.startup/eventBusSingleton.js");
+                    0 === e.length && (e = $("#mw-content-text")), t.inNamespace("special") || "view" !== mw.config.get("wgAction") || function(e, t, n) {
+                        e.find("> h1,> h2,> h3,> h4,> h5,> h6").addClass("section-heading").removeAttr("onclick"), void 0 !== window.mfTempOpenSection && delete window.mfTempOpenSection, new o({
+                            $container: e,
+                            prefix: t,
+                            page: n,
+                            eventBus: i
+                        })
+                    }(e, "content-", t)
+                }
             }
         },
         [
@@ -17001,7 +17700,7 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
     ]);
 }, {
     "css": [
-        ".beta-opt-in-panel{padding-top:1em;padding-bottom:1em}.panel-inline{display:none}.panel-inline.visible{display:block} .mf-font-size-small #content p,.mf-font-size-small .content p{font-size:90%}.mf-font-size-large #content p,.mf-font-size-large .content p{font-size:120%}.mf-font-size-x-large .content p,.mf-font-size-x-large #content p{font-size:140%} .ve-mobile-fakeToolbar-container{position:fixed;z-index:2;left:0;right:0;top:0;height:3em;background:#fff;border-bottom:1px solid #c8ccd1;box-shadow:0 1px 1px rgba(0,0,0,0.1)}.ve-mobile-fakeToolbar-header{display:table !important;height:3em}.ve-mobile-fakeToolbar{height:3em;line-height:0;display:block !important;width:100% !important;box-sizing:content-box;border-color:#c8ccd1;border-style:solid;border-width:0 1px;margin:0 -1px}.ve-mobile-fakeToolbar .mw-ui-icon-close,.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner{display:inline-block;width:3em;min-width:3em;max-width:3em;height:3em}.ve-mobile-fakeToolbar .mw-ui-icon-close:before,.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner:before{background-size:20px 20px;height:3em;margin:0}.ve-mobile-fakeToolbar .mw-ui-icon-close:hover{background-color:#eaecf0}.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner{line-height:3.164em;vertical-align:top;border-left:1px solid #eaecf0;cursor:auto;padding:0 0.875em;width:calc(100vw - 3em);max-width:500px;overflow:hidden;text-overflow:ellipsis}.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner:before{margin-right:0.3em}.ve-loading .content .section-heading .indicator{transition:width 400ms 100ms,min-width 400ms 100ms,opacity 400ms 100ms;width:0;min-width:0;opacity:0}.ve-loading .content .section-heading .indicator:before{width:1.5em}.ve-loading .mw-editsection{transition:opacity 400ms 100ms;opacity:0}.ve-loading .page-actions-menu{transition:border-bottom-color 400ms 100ms;border-bottom-color:transparent}.ve-loading #content{transition:padding-bottom 400ms 100ms,margin-bottom 400ms 100ms,transform 400ms 100ms}.toolbar-hidden{transform:translateY(-100%)}.toolbar-shown{transition:transform 250ms ease;transform:translateY(0);opacity:1}.toolbar-shown-done{ transform:none}"
+        ".beta-opt-in-panel{padding-top:1em;padding-bottom:1em}.panel-inline{display:none}.panel-inline.visible{display:block} .mf-font-size-small #content p,.mf-font-size-small .content p{font-size:90%}.mf-font-size-large #content p,.mf-font-size-large .content p{font-size:120%}.mf-font-size-x-large .content p,.mf-font-size-x-large #content p{font-size:140%} .ve-mobile-fakeToolbar-container{position:fixed;z-index:2;left:0;right:0;top:0;height:3em;background:#fff;border-bottom:1px solid #c8ccd1;box-shadow:0 1px 1px rgba(0,0,0,0.1)}.ve-mobile-fakeToolbar-header{display:table !important;height:3em}.ve-mobile-fakeToolbar{height:3em;line-height:0;display:block !important;width:100% !important;box-sizing:content-box;border-color:#c8ccd1;border-style:solid;border-width:0 1px;margin:0 -1px}.ve-mobile-fakeToolbar .cancel,.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner{display:inline-block;width:3em;min-width:3em;max-width:3em;height:3em}.ve-mobile-fakeToolbar .cancel:before,.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner:before{background-size:20px 20px;height:3em;margin:0}.ve-mobile-fakeToolbar .cancel:hover{background-color:#eaecf0}.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner{line-height:3.164em;vertical-align:top;border-left:1px solid #eaecf0;cursor:auto;padding:0 0.875em;width:calc(100vw - 3em);max-width:500px;overflow:hidden;text-overflow:ellipsis}.ve-mobile-fakeToolbar .mw-ui-icon-mf-spinner:before{margin-right:0.3em}.ve-loading .content .section-heading .indicator{transition:width 400ms 100ms,min-width 400ms 100ms,opacity 400ms 100ms;width:0;min-width:0;opacity:0}.ve-loading .content .section-heading .indicator:before{width:1.5em}.ve-loading .mw-editsection{transition:opacity 400ms 100ms;opacity:0}.ve-loading .page-actions-menu{transition:border-bottom-color 400ms 100ms;border-bottom-color:transparent}.ve-loading #content{transition:padding-bottom 400ms 100ms,margin-bottom 400ms 100ms,transform 400ms 100ms}.toolbar-hidden{transform:translateY(-100%)}.toolbar-shown{transition:transform 250ms ease;transform:translateY(0);opacity:1}.toolbar-shown-done{ transform:none}"
     ]
 }, {
     "apierror-readonly": "The wiki is currently in read-only mode.",
@@ -17014,8 +17713,8 @@ mw.loader.implement("mobile.init@0brfoay", function($, jQuery, require, module) 
     "mobile-frontend-panel-cancel": "No thanks",
     "mobile-frontend-panel-ok": "Okay"
 });
-mw.loader.implement("mobile.site@1hihcg6");
-mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, module) {
+mw.loader.implement("mobile.site@1hihc");
+mw.loader.implement("mobile.startup@8tguk", function($, jQuery, require, module) {
     mw.config.set({
         "wgMFMobileFormatterHeadings": ["h1", "h2", "h3", "h4", "h5", "h6", "h1", "h2", "h3", "h4", "h5", "h6"],
         "wgMFSearchAPIParams": {
@@ -17189,10 +17888,19 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     }
                 }
             },
-            "./src/mobile.init/fakeToolbar.js": function(e, t) {
+            "./src/mobile.init/fakeToolbar.js": function(e, t, i) {
+                var n = i("./src/mobile.startup/icons.js");
                 e.exports = function() {
                     var e, t;
-                    return e = $("<a>").attr("tabindex", "0").attr("role", "button").addClass("mw-ui-icon mw-ui-icon-close mw-ui-icon-element").addClass("cancel").text(mw.msg("mobile-frontend-overlay-close")), t = $("<span>").addClass("mw-ui-icon mw-ui-icon-mf-spinner mw-ui-icon-before").text(mw.msg("mobile-frontend-editor-loading")), $("<div>").addClass("ve-mobile-fakeToolbar-container").append($("<div>").addClass("ve-mobile-fakeToolbar-header").addClass("header").append($("<div>").addClass("ve-mobile-fakeToolbar").append(e, t)))
+                    return e = n.cancel(null, {
+                        tagName: "a"
+                    }).$el.attr("tabindex", "0").attr("role", "button"), t = n.spinner({
+                        tagName: "span",
+                        hasText: !0,
+                        additionalClassNames: "",
+                        label: mw.msg("mobile-frontend-editor-loading")
+                    }).$el, $("<div>").addClass("ve-mobile-fakeToolbar-container").append($("<div>").addClass("ve-mobile-fakeToolbar-header").addClass("header").append($(
+                        "<div>").addClass("ve-mobile-fakeToolbar").append(e, t)))
                 }
             },
             "./src/mobile.startup/Anchor.js": function(e, t, i) {
@@ -17229,10 +17937,10 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         return e.__proto__ = t, e
                     })(e, t)
                 }
-                var l = i(
-                        "./src/mobile.startup/View.js"),
+                var l = i("./src/mobile.startup/View.js"),
                     c = i("./src/mobile.startup/util.js"),
-                    u = function(e) {
+                    u =
+                    function(e) {
                         "use strict";
 
                         function t() {
@@ -17275,11 +17983,11 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                                 }
                             }]), t
                     }();
-                e.
-                exports = u
+                e.exports = u
             },
             "./src/mobile.startup/Browser.js": function(e, t, i) {
-                var n, s = i("./src/mobile.startup/util.js");
+                var n, s = i(
+                    "./src/mobile.startup/util.js");
 
                 function r(e) {
                     var t = function t() {
@@ -17357,7 +18065,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 }), e.exports = a
             },
             "./src/mobile.startup/CtaDrawer.js": function(e, t, i) {
-                var n = i("./src/mobile.startup/Drawer.js"),
+                var n = i(
+                        "./src/mobile.startup/Drawer.js"),
                     s = i("./src/mobile.startup/util.js"),
                     r = i("./src/mobile.startup/Button.js"),
                     a = i("./src/mobile.startup/Anchor.js");
@@ -17399,7 +18108,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     s = i("./src/mobile.startup/View.js"),
                     r = i("./src/mobile.startup/util.js"),
                     a = new(i("./src/mobile.startup/Icon.js"))({
-                        name: "arrow",
+                        name: "expand",
                         additionalClassNames: "cancel"
                     });
 
@@ -17429,10 +18138,10 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             var t = this.options.closeOnScroll;
                             this.$el.parent().addClass("drawer-visible".concat(t ? "" : " has-drawer--with-scroll-locked")), setTimeout(function() {
                                 var i = r.getWindow();
-                                i.one("click.drawer", this.hide.bind(this)), t && i.one("scroll.drawer", this.hide.bind(this)), e.
-                                resolve()
+                                i.one("click.drawer", this.hide.bind(this)), t && i.one("scroll.drawer", this.hide.bind(this)), e.resolve()
                             }.bind(this), this.minHideDelay)
-                        }.bind(this), this.minHideDelay), e.promise()
+                        }.bind(this), this.minHideDelay), e.
+                        promise()
                     },
                     hide: function() {
                         setTimeout(function() {
@@ -17466,7 +18175,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         this.setRotationClass()
                     },
                     setRotationClass: function() {
-                        var e = this.options;
+                        var e =
+                            this.options;
                         if (e.rotation) switch (e.rotation) {
                             case -180:
                             case 180:
@@ -17507,7 +18217,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         return this.parseHTML("<div>").append(this.$el).html()
                     },
                     template: s.template(
-                        '\n<{{tagName}} class="{{base}} {{base}}-{{glyphPrefix}}-{{name}} {{modifier}} {{#isSmall}}mw-ui-icon-small{{/isSmall}} {{#_rotationClass}}{{_rotationClass}}{{/_rotationClass}} {{additionalClassNames}}"\n{{#id}}id="{{id}}"{{/id}}\n{{#href}}href="{{href}}"{{/href}}\n{{#title}}title="{{title}}"{{/title}}>{{label}}</{{tagName}}>\n\t')
+                        '<{{tagName}} class="{{base}} {{base}}-{{glyphPrefix}}-{{name}} {{modifier}} {{#isSmall}}mw-ui-icon-small{{/isSmall}} {{#_rotationClass}}{{_rotationClass}}{{/_rotationClass}} {{additionalClassNames}}" {{#id}}id="{{id}}"{{/id}} {{#href}}href="{{href}}"{{/href}} {{#title}}title="{{title}}"{{/title}}>{{#hasText}}<span>{{/hasText}}{{label}}{{#hasText}}</span>{{/hasText}}</{{tagName}}>')
                 }), mw.log.deprecate(a.prototype, "toHtmlString", a.prototype.toHtmlString), e.exports = a
             },
             "./src/mobile.startup/MessageBox.js": function(e, t, i) {
@@ -17526,9 +18236,9 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
             "./src/mobile.startup/Overlay.js": function(e, t, i) {
                 var n = i("./src/mobile.startup/View.js"),
                     s = i("./src/mobile.startup/headers.js").header,
-                    r = i("./src/mobile.startup/Anchor.js"),
-                    a = i(
-                        "./src/mobile.startup/util.js"),
+                    r = i(
+                        "./src/mobile.startup/Anchor.js"),
+                    a = i("./src/mobile.startup/util.js"),
                     o = i("./src/mobile.startup/Browser.js").getSingleton();
 
                 function l(e) {
@@ -17555,8 +18265,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     },
                     postRender: function() {
                         var e, t = this.options.footerAnchor;
-                        this.$overlayContent = this.$el.find(".overlay-content"), this.isIos && this.$el.addClass("overlay-ios"), t && this.$el.find(
-                            ".overlay-footer-container").append(new r(t).$el), e = this.options.headers || [s(this.options.heading, this.options.headerActions)], this.$el.find(".overlay-header-container").append(e)
+                        this.$overlayContent = this.$el.find(".overlay-content"), this.isIos && this.$el.
+                        addClass("overlay-ios"), t && this.$el.find(".overlay-footer-container").append(new r(t).$el), e = this.options.headers || [s(this.options.heading, this.options.headerActions)], this.$el.find(".overlay-header-container").append(e)
                     },
                     onExitClick: function(e) {
                         var t = function() {
@@ -17578,8 +18288,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     }
                 }), l.make = function(e, t) {
                     var i = new l(e);
-                    return i.$el.find(
-                        ".overlay-content").append(t.$el), i
+                    return i.$el.find(".overlay-content").append(t.$el), i
                 }, e.exports = l
             },
             "./src/mobile.startup/OverlayManager.js": function(e, t, i) {
@@ -17616,8 +18325,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     },
                     _processMatch: function(e) {
                         var t, i = this;
-                        e && (e.overlay ? i._show(e.overlay) :
-                            "function" == typeof(t = e.factoryResult).promise ? t.then(function(t) {
+                        e &&
+                            (e.overlay ? i._show(e.overlay) : "function" == typeof(t = e.factoryResult).promise ? t.then(function(t) {
                                 e.overlay = t, o(t), i._show(t)
                             }) : (e.overlay = t, o(e.overlay), i._show(t)))
                     },
@@ -17647,8 +18356,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         })
                     },
                     replaceCurrent: function(e) {
-                        if (0 === this.stack.length)
-                            throw new Error("Trying to replace OverlayManager's current overlay, but stack is empty");
+                        if (0 === this.stack.length) throw new Error("Trying to replace OverlayManager's current overlay, but stack is empty");
                         this._hideOverlay(this.stack[0].overlay), this.stack[0].overlay = e, o(e), this._show(e)
                     }
                 }, a.getSingleton = function() {
@@ -17678,10 +18386,10 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             ! function(e, t) {
                                 if (!(e instanceof t)) throw new TypeError("Cannot call a class as a function")
                             }(this, e);
-                            var i = t.title || "";
+                            var i = t.
+                            title || "";
                             r.extend(this, {
-                                id: t.
-                                id || 0,
+                                id: t.id || 0,
                                 title: i,
                                 relevantTitle: t.relevantTitle || i,
                                 titleObj: t.titleObj,
@@ -17776,12 +18484,12 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         }),
                         n = Math.min.apply(this, i).toString(),
                         r = [];
-                    return e.forEach(function(e) {
-                        void 0 !== e.line &&
-                            (e.line = e.line.replace(/<\/?a\b[^>]*>/g, "")), e.subsections = [], !t || !e.level || e.level === n || t.subsections.length && t.subsections[0].level > e.level || t.level && t.level >= e.level ? (r.push(e), t = e) : (! function e(t, i) {
-                                var n;
-                                0 === t.length ? t.push(i) : (n = t[t.length - 1], parseInt(n.level, 10) === parseInt(i.level, 10) ? t.push(i) : e(n.subsections, i))
-                            }(t.subsections, e), t.text += s.render(e))
+                    return e.
+                    forEach(function(e) {
+                        void 0 !== e.line && (e.line = e.line.replace(/<\/?a\b[^>]*>/g, "")), e.subsections = [], !t || !e.level || e.level === n || t.subsections.length && t.subsections[0].level > e.level || t.level && t.level >= e.level ? (r.push(e), t = e) : (! function e(t, i) {
+                            var n;
+                            0 === t.length ? t.push(i) : (n = t[t.length - 1], parseInt(n.level, 10) === parseInt(i.level, 10) ? t.push(i) : e(n.subsections, i))
+                        }(t.subsections, e), t.text += s.render(e))
                     }), r
                 }
 
@@ -17816,31 +18524,30 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             noheadings: "yes",
                             sectionprop: "level|line|anchor",
                             sections: i ? 0 : "all"
-                        })), o[e] || (o[e] =
-                            this.api.get(c).then(function(t) {
-                                var i, a, o, c;
-                                return t.error ? r.reject(t.error) : t.mobileview.sections ? (i = l((c = t.mobileview).sections), s = new Date(c.lastmodified).getTime() / 1e3, a = c.lastmodifiedby, u = Array.isArray(c.protection) ? u : n.extend(u, c.protection), o = {
-                                    title: e,
-                                    id: c.id,
-                                    revId: c.revId,
-                                    protection: u,
-                                    lead: i[0].text,
-                                    sections: i.slice(1),
-                                    isMainPage: void 0 !== c.mainpage,
-                                    historyUrl: mw.util.getUrl(e, {
-                                        action: "history"
-                                    }),
-                                    lastModifiedTimestamp: s,
-                                    languageCount: c.languagecount,
-                                    hasVariants: void 0 !== c.hasvariants,
-                                    displayTitle: c.displaytitle
-                                }, a && n.extend(o, {
-                                    lastModifiedUserName: a.name,
-                                    lastModifiedUserGender: a.gender
-                                }), o) : r.reject("No sections")
-                            }, function(e) {
-                                return r.reject(e)
-                            })), o[e]
+                        })), o[e] || (o[e] = this.api.get(c).then(function(t) {
+                            var i, a, o, c;
+                            return t.error ? r.reject(t.error) : t.mobileview.sections ? (i = l((c = t.mobileview).sections), s = new Date(c.lastmodified).getTime() / 1e3, a = c.lastmodifiedby, u = Array.isArray(c.protection) ? u : n.extend(u, c.protection), o = {
+                                title: e,
+                                id: c.id,
+                                revId: c.revId,
+                                protection: u,
+                                lead: i[0].text,
+                                sections: i.slice(1),
+                                isMainPage: void 0 !== c.mainpage,
+                                historyUrl: mw.util.getUrl(e, {
+                                    action: "history"
+                                }),
+                                lastModifiedTimestamp: s,
+                                languageCount: c.languagecount,
+                                hasVariants: void 0 !== c.hasvariants,
+                                displayTitle: c.displaytitle
+                            }, a && n.extend(o, {
+                                lastModifiedUserName: a.name,
+                                lastModifiedUserGender: a.gender
+                            }), o) : r.reject("No sections")
+                        }, function(e) {
+                            return r.reject(e)
+                        })), o[e]
                     },
                     invalidatePage: function(e) {
                         delete o[e]
@@ -17903,8 +18610,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         n.enumerable = n.enumerable || !1, n.configurable = !0, "value" in n && (n.writable = !0), Object.defineProperty(e, n.key, n)
                     }
                 }
-                var s = i(
-                        "./src/mobile.startup/Thumbnail.js"),
+                var s = i("./src/mobile.startup/Thumbnail.js"),
                     r = mw.config.get("wgMFMobileFormatterHeadings", ["h1", "h2", "h3", "h4", "h5"]).join(","),
                     a = ["noviewer", "metadata"],
                     o = function() {
@@ -18115,10 +18821,111 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     }
                 }), e.exports = a
             },
+            "./src/mobile.startup/Toggler.js": function(e, t, i) {
+                var n = i("./src/mobile.startup/Browser.js").
+                getSingleton(), s = i("./src/mobile.startup/util.js"), r = s.escapeHash, a = {
+                    name: "expand",
+                    additionalClassNames: "indicator"
+                }, o = i("./src/mobile.startup/Icon.js");
+
+                function l(e) {
+                    this.eventBus = e.eventBus, this._enable(e.$container, e.prefix, e.page, e.isClosed)
+                }
+
+                function c(e) {
+                    var t = JSON.parse(mw.storage.get("expandedSections") || "{}");
+                    return t[e.title] = t[e.title] || {}, t
+                }
+
+                function u(e) {
+                    mw.storage.set("expandedSections", JSON.stringify(e))
+                }
+
+                function d(e, t, i) {
+                    var n, s, r = c(i);
+                    t.find(".section-heading span").each(function() {
+                        s = t.find(this), n = s.parents(".section-heading"), r[i.title][s.attr("id")] && !n.hasClass("open-block") && e.toggle(n, i)
+                    })
+                }
+
+                function h(e) {
+                    var t = (new Date).getTime(),
+                        i = c(e);
+                    Object.keys(i).forEach(function(e) {
+                        var n = i[e];
+                        Object.keys(n).forEach(function(s) {
+                            var r = n[s];
+                            Math.floor((t - r) / 1e3 / 60 / 60 / 24) >= 1 && delete i[e][s]
+                        })
+                    }), u(i)
+                }
+                l.prototype.toggle = function(e, t) {
+                    var i, s = e.is(".open-block"),
+                        r = e.next();
+                    e.toggleClass("open-block"), e.data("indicator").remove(), a.rotation = s ? 0 : 180, i = new o(a).prependTo(e), e.data(
+                        "indicator", i), r.toggleClass("open-block").attr({
+                        "aria-pressed": !s,
+                        "aria-expanded": !s
+                    }), this.eventBus.emit("section-toggled", {
+                        expanded: s,
+                        isReferenceSection: Boolean(r.attr("data-is-reference-section")),
+                        $heading: e
+                    }), n.isWideScreen() || function(e, t) {
+                        var i = e.find("span").attr("id"),
+                            n = e.hasClass("open-block"),
+                            s = c(t);
+                        i && (n ? s[t.title][i] = (new Date).getTime() : delete s[t.title][i], u(s))
+                    }(e, t)
+                }, l.prototype.reveal = function(e, t, i) {
+                    var n, s;
+                    try {
+                        (s = (n = t.find(r(e))).parents(".collapsible-heading")).length || (s = n.parents(".collapsible-block").prev(".collapsible-heading")), s.length && !s.hasClass("open-block") && this.toggle(s, i), s.length && window.scrollTo(0, n.offset().top)
+                    } catch (e) {}
+                }, l.prototype._enable = function(e, t, i, r) {
+                    var l, c, u, p, m, f = this,
+                        g = mw.config.get("wgMFCollapseSectionsByDefault");
+
+                    function w() {
+                        var t = window.location.hash;
+                        0 === t.indexOf("#") && f.reveal(decodeURIComponent(t), e, i)
+                    }
+                    l = e.find("> h1,> h2,> h3,> h4,> h5,> h6,.section-heading").eq(0).prop("tagName") || "H1", void 0 === g && (g = !0), c = !g || "true" === mw.
+                    storage.get("expandSections"), e.children(l).each(function(s) {
+                            var l, d = e.find(this),
+                                h = d.find(".indicator"),
+                                m = t + "collapsible-block-" + s;
+                            d.next().is("div") && (p = d.next("div"), l = Boolean(p.attr("data-is-reference-section")), d.addClass("collapsible-heading ").data("section-number", s).attr({
+                                tabindex: 0,
+                                "aria-haspopup": "true",
+                                "aria-controls": m
+                            }).on("click", function(e) {
+                                e.target.href || (e.preventDefault(), f.toggle(d, i))
+                            }), a.rotation = c ? 180 : 0, u = new o(a), h.length ? h.replaceWith(u.$el) : u.prependTo(d), d.data("indicator", u.$el), p.addClass("collapsible-block").eq(0).attr({
+                                id: m,
+                                "aria-pressed": "false",
+                                "aria-expanded": "false"
+                            }), function(e, t, i) {
+                                t.on("keypress", function(n) {
+                                    13 !== n.which && 32 !== n.which || e.toggle(t, i)
+                                }).find("a").on("keypress mouseup", function(e) {
+                                    e.stopPropagation()
+                                })
+                            }(f, d, i), !l && (!r && n.isWideScreen() || c) && f.toggle(d, i))
+                        }),
+                        function() {
+                            var t = mw.config.get("wgInternalRedirectTargetUrl"),
+                                n = !!t && t.split("#")[1];
+                            n && (window.location.hash = n, f.reveal(n, e, i))
+                        }(), w(), (m = e.find("a:not(.reference a)")).on("click", function() {
+                            void 0 !== m.attr("href") && m.attr("href").indexOf("#") > -1 && w()
+                        }), s.getWindow().on("hashchange", function() {
+                            w()
+                        }), !n.isWideScreen() && i && (d(this, e, i), h(i))
+                }, l._getExpandedSections = c, l._expandStoredSections = d, l._cleanObsoleteStoredSections = h, e.exports = l
+            },
             "./src/mobile.startup/View.js": function(e, t, i) {
                 var n = i("./src/mobile.startup/util.js"),
-                    s = i(
-                        "./src/mobile.startup/mfExtend.js"),
+                    s = i("./src/mobile.startup/mfExtend.js"),
                     r = /^(\S+)\s*(.*)$/,
                     a = 0;
 
@@ -18137,7 +18944,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             var t = (++a).toString();
                             return e ? e + t : t
                         }("view"), "string" == typeof this.template && (this.template = mw.template.compile(this.template)), e.el ? this.$el = $(e.el) : this.$el = this.parseHTML("<" + this.tagName + ">"), this.$el.length ? this._postInitialize(e) : n.docReady(function() {
-                            t.$el = $(e.el), t._postInitialize(e)
+                            t.$el = $(e.el), t._postInitialize(
+                                e)
                         })
                     },
                     _postInitialize: function(e) {
@@ -18173,8 +18981,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     }
                 }), o.make = function() {
                     var e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : {},
-                        t = arguments.length > 1 && void 0 !== arguments[1] ?
-                        arguments[1] : [],
+                        t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : [],
                         i = new o(e);
                     return t.forEach(function(e) {
                         i.append(e)
@@ -18248,8 +19055,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 }
             },
             "./src/mobile.startup/currentPageHTMLParser.js": function(e, t, i) {
-                var n, s = i(
-                    "./src/mobile.startup/PageHTMLParser.js");
+                var n, s = i("./src/mobile.startup/PageHTMLParser.js");
                 e.exports = function() {
                     return n || (n = new s($("#content #bodyContent")))
                 }
@@ -18269,14 +19075,14 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         },
                         a = mw.config.get("wgMFContentProviderScriptPath");
                     if (!Object.prototype.hasOwnProperty.call(r, e)) throw new Error('"' + e + "\" isn't a feature that shows Wikibase descriptions.");
-                    return (t = Array.prototype.slice.call(arguments, 1)).unshift({
+                    return (t =
+                        Array.prototype.slice.call(arguments, 1)).unshift({
                         prop: []
                     }), t.push(mw.config.get("wgMFSearchAPIParams")), (i = n.extend.apply({}, t)).prop = i.prop.concat(mw.config.get("wgMFQueryPropModules")), r[e] && -1 === i.prop.indexOf("description") && i.prop.push("description"), a && (i.origin = "*"), s(i)
                 }
             },
             "./src/mobile.startup/headers.js": function(e, t, i) {
-                var n = i(
-                        "./src/mobile.startup/util.js"),
+                var n = i("./src/mobile.startup/util.js"),
                     s = i("./src/mobile.startup/Button.js"),
                     r = i("./src/mobile.startup/icons.js");
 
@@ -18305,8 +19111,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             tagName: "button",
                             additionalClassNames: "save submit",
                             disabled: !0,
-                            label: n.
-                            saveButtonMessage()
+                            label: n.saveButtonMessage()
                         })], r.back(), t)
                     },
                     formHeader: function(e, t, i, n) {
@@ -18319,27 +19124,27 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 var n = i("./src/mobile.startup/Icon.js"),
                     s = i("./src/mobile.startup/util.js");
                 e.exports = {
-                    CANCEL_GLYPH: "overlay-close",
+                    CANCEL_GLYPH: "close",
                     Icon: n,
                     back: function() {
                         return new n({
                             tagName: "button",
-                            name: "back",
+                            name: "arrowPrevious-base20",
                             additionalClassNames: "back",
                             label: mw.msg("mobile-frontend-overlay-close")
                         })
                     },
-                    cancel: function(e) {
-                        var t = e ? "overlay-close-" + e : "overlay-close";
-                        return new this.Icon({
+                    cancel: function(e, t) {
+                        var i = e ? "".concat("close", "-").concat(e) : "".concat("close", "-base20");
+                        return new this.Icon(s.extend({
                             tagName: "button",
-                            name: t,
+                            name: i,
                             additionalClassNames: "cancel",
                             label: mw.msg("mobile-frontend-overlay-close")
-                        })
+                        }, t || {}))
                     },
                     spinner: function(e) {
-                        return (e = e || {}).additionalClassNames = e.additionalClassNames || "spinner loading", new this.Icon(s.extend(e, {
+                        return void 0 === (e = e || {}).additionalClassNames && (e.additionalClassNames = "spinner loading"), new this.Icon(s.extend(e, {
                             name: "spinner",
                             label: mw.msg("mobile-frontend-loading-message")
                         }))
@@ -18381,18 +19186,19 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             i = e.dataset.width || "0",
                             s = e.dataset.height || "0",
                             r = new Image(parseInt(i, 10), parseInt(s, 10));
-                        return r.className = e.dataset.class || "", r.alt = e.dataset.alt || "", r.style.cssText = e.style.cssText || "", r.addEventListener("load", function() {
-                            r.classList.add("image-lazy-loaded"), e.parentNode && e.parentNode.replaceChild(r, e), t.resolve("load")
-                        }, {
-                            once: !0
-                        }), r.addEventListener("error", function() {
-                            t.resolve("error")
-                        }, {
-                            once: !0
-                        }), r.src = e.dataset.src || "", r.srcset = e.dataset.srcset || "", {
-                            promise: t,
-                            image: r
-                        }
+                        return r.className = e.dataset
+                            .class || "", r.alt = e.dataset.alt || "", r.style.cssText = e.style.cssText || "", r.addEventListener("load", function() {
+                                r.classList.add("image-lazy-loaded"), e.parentNode && e.parentNode.replaceChild(r, e), t.resolve("load")
+                            }, {
+                                once: !0
+                            }), r.addEventListener("error", function() {
+                                t.resolve("error")
+                            }, {
+                                once: !0
+                            }), r.src = e.dataset.src || "", r.srcset = e.dataset.srcset || "", {
+                                promise: t,
+                                image: r
+                            }
                     },
                     test: {
                         placeholderClass: s
@@ -18413,7 +19219,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                                 }(n, i) || (o.push(e), !1)
                             })).length || (e.off("scroll:throttled", a), e.off("resize:throttled", a), e.off("section-toggled", a)), n.loadImages(o)
                         }
-                        return e.on("scroll:throttled", a), e.on("resize:throttled", a), e.on("section-toggled", a), {
+                        return e.on("scroll:throttled", a), e.on("resize:throttled", a), e.on(
+                            "section-toggled", a), {
                             loadImages: a
                         }
                     }
@@ -18434,8 +19241,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         var t, i, n = this._register;
 
                         function s() {
-                            if (!Object.hasOwnProperty.call(n, e))
-                                throw new Error("MobileFrontend Module not found: " + e);
+                            if (!Object.hasOwnProperty.call(n, e)) throw new Error("MobileFrontend Module not found: " + e);
                             return n[e]
                         }
                         i = e.split("/");
@@ -18475,13 +19281,12 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                                 displaytitle: mw.html.escape(e.title)
                             },
                             l = e.terms;
-                        return (o || l) && (i = l && l.label ? mw.html.escape(l.label[0]) : o.displaytitle), e.wikidataDescription = e.description ||
-                            void 0, a && (e.thumbnail.isLandscape = a.width > a.height), e.revisions && e.revisions[0] && (t = e.revisions[0], e.lastModified = s.getLastModifiedMessage(new Date(t.timestamp).getTime() / 1e3, t.user)), new n(r.extend(e, {
-                                id: e.pageid,
-                                isMissing: !!e.missing,
-                                url: mw.util.getUrl(e.title),
-                                displayTitle: i
-                            }))
+                        return (o || l) && (i = l && l.label ? mw.html.escape(l.label[0]) : o.displaytitle), e.wikidataDescription = e.description || void 0, a && (e.thumbnail.isLandscape = a.width > a.height), e.revisions && e.revisions[0] && (t = e.revisions[0], e.lastModified = s.getLastModifiedMessage(new Date(t.timestamp).getTime() / 1e3, t.user)), new n(r.extend(e, {
+                            id: e.pageid,
+                            isMissing: !!e.missing,
+                            url: mw.util.getUrl(e.title),
+                            displayTitle: i
+                        }))
                     }
                 }
             },
@@ -18495,7 +19300,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     return t.$el.append(n.spinner().$el), e.then(function(e) {
                         t.$el.replaceWith(e.$el), t.$el = e.$el
                     }, function(e) {
-                        e && e.$el && (t.$el.replaceWith(e.$el), t.$el = e.$el)
+                        e && e.$el && (t.$el
+                            .replaceWith(e.$el), t.$el = e.$el)
                     }), t
                 }
             },
@@ -18509,8 +19315,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     }
 
                     function u(e) {
-                        if (!(e in t)) throw new Error("Action '".concat(e,
-                            "' not found in 'actions' object. Please add this to\n\t\t\t\tthe object when creating a campaign with promoCampaign.js if you believe\n\t\t\t\tthis is a valid action."))
+                        if (!(e in t)) throw new Error("Action '".concat(e, "' not found in 'actions' object. Please add this to\n\t\t\t\tthe object when creating a campaign with promoCampaign.js if you believe\n\t\t\t\tthis is a valid action."))
                     }
                     return {
                         showIfEligible: function(t) {
@@ -18535,7 +19340,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     r = i("./src/mobile.startup/extendSearchParams.js");
 
                 function a(e) {
-                    this.api = e, this.searchCache = {}, this.generator = mw.config.get("wgMFSearchGenerator")
+                    this.api = e, this.
+                    searchCache = {}, this.generator = mw.config.get("wgMFSearchGenerator")
                 }
                 a.prototype = {
                     searchNamespace: 0,
@@ -18544,8 +19350,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             i = r("search", {
                                 generator: this.generator.name
                             });
-                        return i.redirects = "", i["g" + t + "search"] = e, i["g" + t + "namespace"] = this.searchNamespace, i["g" + t + "limit"] = 15, i.pilimit && (i.pilimit =
-                            15, i.pithumbsize = mw.config.get("wgMFThumbnailSizes").tiny), i
+                        return i.redirects = "", i["g" + t + "search"] = e, i["g" + t + "namespace"] = this.searchNamespace, i["g" + t + "limit"] = 15, i.pilimit && (i.pilimit = 15, i.pithumbsize = mw.config.get("wgMFThumbnailSizes").tiny), i
                     },
                     _createSearchRegEx: function(e) {
                         return e = e.replace(/[-\[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), new RegExp("^(" + e + ")", "ig")
@@ -18563,7 +19368,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         return t.query && (n = t.query.pages || {}, (n = Object.keys(n).map(function(t) {
                             return i._getPage(e, n[t])
                         })).sort(function(e, t) {
-                            return e.index < t.index ? -1 : 1
+                            return e.
+                            index < t.index ? -1 : 1
                         })), n
                     },
                     search: function(e) {
@@ -18616,8 +19422,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             days: "mobile-frontend-last-modified-with-user-days",
                             months: "mobile-frontend-last-modified-with-user-months",
                             years: "mobile-frontend-last-modified-with-user-years"
-                        } [r.unit], i, t, mw.language.convertNumber(r.value)), c.push(n ||
-                            "#", mw.language.convertNumber(t ? 1 : 0), t ? mw.util.getUrl("User:" + t) : ""), a = mw.message.apply(this, c).parse(), n ? a : s.parseHTML("<div>").html(a).text()
+                        } [r.unit], i, t, mw.language.convertNumber(r.value)), c.push(n || "#", mw.language.convertNumber(t ? 1 : 0), t ? mw.util.getUrl("User:" + t) : ""), a = mw.message.apply(this, c).parse(), n ? a : s.parseHTML("<div>").html(a).text()
                     },
                     getRegistrationMessage: function(e, t) {
                         var i, n = [];
@@ -18634,7 +19439,9 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     getTimeAgoDelta: o,
                     isNow: l,
                     isRecent: function(e) {
-                        return ["seconds", "minutes", "hours"].indexOf(e.unit) > -1
+                        return ["seconds",
+                            "minutes", "hours"
+                        ].indexOf(e.unit) > -1
                     }
                 }
             },
@@ -18646,8 +19453,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     mw.requestIdleCallback(this._showPending.bind(this))
                 }
                 r.prototype.show = function(e, t) {
-                    "string" == typeof t && (mw.log.warn(
-                        "The use of the cssClass parameter of Toast.show is deprecated, please convert it to an options object."), t = {
+                    "string" == typeof t && (mw.log.warn("The use of the cssClass parameter of Toast.show is deprecated, please convert it to an options object."), t = {
                         type: t
                     }), t = n.extend({
                         tag: "toast"
@@ -18680,8 +19486,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         return $.escapeSelector(e)
                     },
                     grep: function() {
-                        return $
-                            .grep.apply($, arguments)
+                        return $.grep.apply($, arguments)
                     },
                     docReady: function(e) {
                         return $(e)
@@ -18722,7 +19527,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             },
                             render: function(t, i) {
                                 var n = {};
-                                return Object.keys(i || {}).forEach(function(e) {
+                                return Object.keys(
+                                    i || {}).forEach(function(e) {
                                     n[e] = i[e].getSource()
                                 }), Mustache.render(e.trim(), t, n)
                             }
@@ -18734,8 +19540,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 var n = i("./src/mobile.startup/View.js"),
                     s = i("./src/mobile.startup/watchstar/WatchstarGateway.js"),
                     r = i("./src/mobile.startup/icons.js"),
-                    a = i(
-                        "./src/mobile.startup/util.js"),
+                    a = i("./src/mobile.startup/util.js"),
                     o = i("./src/mobile.startup/mfExtend.js"),
                     l = i("./src/mobile.startup/toast.js"),
                     c = i("./src/mobile.startup/CtaDrawer.js");
@@ -18774,8 +19579,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     postRender: function() {
                         var e = r.watchIcon().getGlyphClassName(),
                             t = r.watchedIcon().getGlyphClassName() + " watched";
-                        this.$el.text(this.options.tooltip), !mw.user.isAnon() && this._watched ? this.$el.addClass(t).
-                        removeClass(e): this.$el.addClass(e).removeClass(t), this.$el.removeClass("hidden")
+                        this.$el.text(this.options.tooltip), !mw.user.isAnon() && this._watched ? this.$el.addClass(t).removeClass(e) : this.$el.addClass(e).removeClass(t), this.$el.removeClass("hidden")
                     },
                     onStatusToggleAnon: function() {
                         this.drawer || (this.drawer = new c(this.ctaDrawerOptions)), this.drawer.show()
@@ -18805,8 +19609,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 }), e.exports = u
             },
             "./src/mobile.startup/watchstar/WatchstarGateway.js": function(e, t, i) {
-                var n = i(
-                        "./src/mobile.startup/util.js"),
+                var n = i("./src/mobile.startup/util.js"),
                     s = i("./src/mobile.startup/actionParams.js");
 
                 function r(e) {
@@ -18879,7 +19682,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         })
                     },
                     queryUnitializedItems: function() {
-                        return this.$el.find("li:not(.with-watchstar)")
+                        return this.$el.find(
+                            "li:not(.with-watchstar)")
                     },
                     getPages: function(e, t) {
                         return r.isAnon() ? a.Deferred().resolve({}) : this.wsGateway.getStatuses(e, t)
@@ -18923,114 +19727,10 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
     ]);
     this.mfModules = this.mfModules || {}, this.mfModules["mobile.startup"] = (window.webpackJsonp = window.webpackJsonp || []).push([
         [3], {
-            "./src/mobile.startup/Toggler.js": function(e, t, r) {
-                var s = r("./src/mobile.startup/Browser.js").getSingleton(),
-                    n = r("./src/mobile.startup/util.js"),
-                    a = n.escapeHash,
-                    o = {
-                        name: "arrow",
-                        additionalClassNames: "indicator"
-                    },
-                    i = r("./src/mobile.startup/Icon.js");
-
-                function l(e) {
-                    this.eventBus = e.eventBus, this._enable(e.$container, e.prefix, e.page, e.isClosed)
-                }
-
-                function c(e) {
-                    var t = JSON.
-                    parse(mw.storage.get("expandedSections") || "{}");
-                    return t[e.title] = t[e.title] || {}, t
-                }
-
-                function u(e) {
-                    mw.storage.set("expandedSections", JSON.stringify(e))
-                }
-
-                function p(e, t, r) {
-                    var s, n, a = c(r);
-                    t.find(".section-heading span").each(function() {
-                        n = t.find(this), s = n.parents(".section-heading"), a[r.title][n.attr("id")] && !s.hasClass("open-block") && e.toggle(s, r)
-                    })
-                }
-
-                function h(e) {
-                    var t = (new Date).getTime(),
-                        r = c(e);
-                    Object.keys(r).forEach(function(e) {
-                        var s = r[e];
-                        Object.keys(s).forEach(function(n) {
-                            var a = s[n];
-                            Math.floor((t - a) / 1e3 / 60 / 60 / 24) >= 1 && delete r[e][n]
-                        })
-                    }), u(r)
-                }
-                l.prototype.toggle = function(e, t) {
-                    var r, n = e.is(".open-block"),
-                        a = e.next();
-                    e.toggleClass("open-block"), e.data("indicator").remove(), o.rotation = n ? 0 : 180, r = new i(o).prependTo(e), e.data("indicator", r), a.toggleClass("open-block").attr({
-                        "aria-pressed": !n,
-                        "aria-expanded": !n
-                    }), this.eventBus.emit("section-toggled", {
-                        expanded: n,
-                        isReferenceSection: Boolean(a.attr("data-is-reference-section")),
-                        $heading: e
-                    }), s.isWideScreen() || function(e, t) {
-                        var r = e.find("span").attr(
-                                "id"),
-                            s = e.hasClass("open-block"),
-                            n = c(t);
-                        r && (s ? n[t.title][r] = (new Date).getTime() : delete n[t.title][r], u(n))
-                    }(e, t)
-                }, l.prototype.reveal = function(e, t, r) {
-                    var s, n;
-                    try {
-                        (n = (s = t.find(a(e))).parents(".collapsible-heading")).length || (n = s.parents(".collapsible-block").prev(".collapsible-heading")), n.length && !n.hasClass("open-block") && this.toggle(n, r), n.length && window.scrollTo(0, s.offset().top)
-                    } catch (e) {}
-                }, l.prototype._enable = function(e, t, r, a) {
-                    var l, c, u, m, d, f = this,
-                        g = mw.config.get("wgMFCollapseSectionsByDefault");
-
-                    function b() {
-                        var t = window.location.hash;
-                        0 === t.indexOf("#") && f.reveal(decodeURIComponent(t), e, r)
-                    }
-                    l = e.find("> h1,> h2,> h3,> h4,> h5,> h6,.section-heading").eq(0).prop("tagName") || "H1", void 0 === g && (g = !0), c = !g || "true" === mw.storage.get("expandSections"), e.children(l).each(function(n) {
-                            var l, p = e.find(this),
-                                h = p.find(".indicator"),
-                                d = t + "collapsible-block-" + n;
-                            p.next().is("div") && (m = p.next("div"), l = Boolean(m.attr("data-is-reference-section")), p.addClass("collapsible-heading ").data("section-number", n).attr({
-                                tabindex: 0,
-                                "aria-haspopup": "true",
-                                "aria-controls": d
-                            }).on("click", function(e) {
-                                e.target.href || (e.preventDefault(), f.toggle(p, r))
-                            }), o.rotation = c ? 180 : 0, u = new i(o), h.length ? h.replaceWith(u.$el) : u.prependTo(p), p.data("indicator", u.$el), m.addClass("collapsible-block").eq(0).attr({
-                                id: d,
-                                "aria-pressed": "false",
-                                "aria-expanded": "false"
-                            }), function(e, t, r) {
-                                t.on("keypress", function(s) {
-                                    13 !== s.which && 32 !== s.which || e.toggle(t, r)
-                                }).find("a").on("keypress mouseup", function(e) {
-                                    e.stopPropagation()
-                                })
-                            }(f, p, r), !l && (!a && s.isWideScreen() || c) && f.toggle(p, r))
-                        }),
-                        function() {
-                            var t = mw.config.get("wgInternalRedirectTargetUrl"),
-                                s = !!t && t.split("#")[1];
-                            s && (window.location.hash = s, f.reveal(s, e, r))
-                        }(), b(), (d = e.find("a:not(.reference a)")).on("click", function() {
-                            void 0 !== d.attr("href") && d.attr("href").indexOf("#") > -1 && b()
-                        }), n.getWindow().on("hashchange", function() {
-                            b()
-                        }), !s.isWideScreen() && r && (p(this, e, r), h(r))
-                }, l._getExpandedSections = c, l._expandStoredSections = p, l._cleanObsoleteStoredSections = h, e.exports = l
-            },
             "./src/mobile.startup/languageOverlay/getDeviceLanguage.js": function(e, t) {
                 e.exports = function(e) {
-                    var t = e.languages ? e.languages[0] : e.language || e.userLanguage || e.browserLanguage || e.systemLanguage;
+                    var t = e.languages ? e.languages[
+                        0] : e.language || e.userLanguage || e.browserLanguage || e.systemLanguage;
                     return t ? t.toLowerCase() : void 0
                 }
             },
@@ -19059,13 +19759,13 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     }, o(i(e)))
                 }
                 l.test = {
-                        loadLanguageSearcher: i
-                    },
-                    e.exports = l
+                    loadLanguageSearcher: i
+                }, e.exports = l
             },
             "./src/mobile.startup/loadingOverlay.js": function(e, t, r) {
                 var s = r("./src/mobile.startup/icons.js"),
-                    n = r("./src/mobile.startup/Overlay.js");
+                    n = r(
+                        "./src/mobile.startup/Overlay.js");
                 e.exports = function() {
                     var e = new n({
                         className: "overlay overlay-loading",
@@ -19092,14 +19792,14 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
             },
             "./src/mobile.startup/mobile.startup.js": function(e, t, r) {
                 var s = r("./src/mobile.startup/moduleLoaderSingleton.js"),
-                    n = r(
-                        "./src/mobile.startup/search/schemaMobileWebSearch.js");
+                    n = r("./src/mobile.startup/util.js"),
+                    a = r("./src/mobile.startup/search/schemaMobileWebSearch.js");
                 e.exports = {
                     moduleLoader: s,
                     mfExtend: r("./src/mobile.startup/mfExtend.js"),
                     context: r("./src/mobile.startup/context.js"),
                     time: r("./src/mobile.startup/time.js"),
-                    util: r("./src/mobile.startup/util.js"),
+                    util: n,
                     View: r("./src/mobile.startup/View.js"),
                     PageGateway: r("./src/mobile.startup/PageGateway.js"),
                     Browser: r("./src/mobile.startup/Browser.js"),
@@ -19116,7 +19816,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     Skin: r("./src/mobile.startup/Skin.js"),
                     OverlayManager: r("./src/mobile.startup/OverlayManager.js"),
                     Overlay: r("./src/mobile.startup/Overlay.js"),
-                    loadingOverlay: r("./src/mobile.startup/loadingOverlay.js"),
+                    loadingOverlay: r(
+                        "./src/mobile.startup/loadingOverlay.js"),
                     CtaDrawer: r("./src/mobile.startup/CtaDrawer.js"),
                     toast: r("./src/mobile.startup/toast.js"),
                     Watchstar: r("./src/mobile.startup/watchstar/Watchstar.js"),
@@ -19124,7 +19825,11 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     eventBusSingleton: r("./src/mobile.startup/eventBusSingleton.js"),
                     Toggler: r("./src/mobile.startup/Toggler.js"),
                     toc: {
-                        TableOfContents: r("./src/mobile.startup/toc/TableOfContents.js")
+                        TableOfContents: function() {
+                            return {
+                                $el: n.parseHTML("<div>")
+                            }
+                        }
                     },
                     notifications: {
                         overlay: r("./src/mobile.startup/notifications/overlay.js")
@@ -19145,7 +19850,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     mediaViewer: {
                         overlay: r("./src/mobile.startup/mediaViewer/overlay.js")
                     }
-                }, mw.mobileFrontend = s, s.define("mobile.startup", e.exports), n.subscribeMobileWebSearchSchema()
+                }, mw.mobileFrontend = s, s.define("mobile.startup", e.exports), a.subscribeMobileWebSearchSchema()
             },
             "./src/mobile.startup/notifications/overlay.js": function(e, t, r) {
                 var s = r("./src/mobile.startup/Overlay.js"),
@@ -19165,7 +19870,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         }),
                         u = a(l);
                     u.$el.hide();
-                    var p = s.make({
+                    var m = s.make({
                         heading: "<strong>" + mw.message("notifications").escaped() + "</strong>",
                         footerAnchor: new i({
                             href: mw.util.getUrl("Special:Notifications"),
@@ -19177,13 +19882,13 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         isBorderBox: !1,
                         className: "overlay notifications-overlay navigation-drawer",
                         onBeforeExit: function(e) {
-                            return c(p, e)
+                            return c(m, e)
                         }
                     }, a(l.then(function() {
                         var s = n.require("mobile.notifications.overlay");
                         return (0, s.list)(s.echo(), r, e, t)
                     })));
-                    return p
+                    return m
                 }
 
                 function c(e, t) {
@@ -19207,14 +19912,14 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     a = r("./src/mobile.startup/util.js");
 
                 function o() {
-                    s.apply(this,
-                        arguments)
+                    s.apply(this, arguments)
                 }
                 n(o, s, {
                     EXTERNAL_LINK_CLASS: "external--reference",
                     getReferenceFromContainer: function(e, t) {
                         var r, n = a.Deferred();
-                        return (r = t.find("#" + a.escapeSelector(e.substr(1)))).length ? (r.find(".external").addClass(this.EXTERNAL_LINK_CLASS), n.resolve({
+                        return (r = t.find(
+                            "#" + a.escapeSelector(e.substr(1)))).length ? (r.find(".external").addClass(this.EXTERNAL_LINK_CLASS), n.resolve({
                             text: r.html()
                         })) : n.reject(s.ERROR_NOT_EXIST), n.promise()
                     },
@@ -19249,7 +19954,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         events: {
                             "click sup": e.onNestedReferenceClick && c(e.onNestedReferenceClick)
                         },
-                        children: [a.parseHTML("<div>").addClass("references-drawer__header").append([new l({
+                        children: [a.parseHTML("<div>").addClass(
+                            "references-drawer__header").append([new l({
                             isSmall: !0,
                             name: "citation-invert",
                             additionalClassNames: "references-drawer__title",
@@ -19284,15 +19990,15 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 }, e.exports = s
             },
             "./src/mobile.startup/rlModuleLoader.js": function(e, t, r) {
-                var s = r(
-                        "./src/mobile.startup/loadingOverlay.js"),
+                var s = r("./src/mobile.startup/loadingOverlay.js"),
                     n = r("./src/mobile.startup/util.js");
                 e.exports = {
                     newLoadingOverlay: function() {
                         return s()
                     },
                     loadModule: function(e, t, r) {
-                        var s = this.newLoadingOverlay();
+                        var s = this.
+                        newLoadingOverlay();
 
                         function a() {
                             !t && r && s.hide()
@@ -19356,16 +20062,13 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
             },
             "./src/mobile.startup/search/SearchOverlay.js": function(e, t, r) {
                 var s = r("./src/mobile.startup/mfExtend.js"),
-                    n = r(
-                        "./src/mobile.startup/Overlay.js"),
+                    n = r("./src/mobile.startup/Overlay.js"),
                     a = r("./src/mobile.startup/util.js"),
                     o = r("./src/mobile.startup/icons.js"),
-                    i = r("./src/mobile.startup/headers.js").formHeader,
-                    l = r("./src/mobile.startup/Icon.js"),
-                    c = r("./src/mobile.startup/search/SearchResultsView.js"),
-                    u = r("./src/mobile.startup/watchstar/WatchstarPageList.js");
+                    i = r("./src/mobile.startup/headers.js").
+                formHeader, l = r("./src/mobile.startup/Icon.js"), c = r("./src/mobile.startup/search/SearchResultsView.js"), u = r("./src/mobile.startup/watchstar/WatchstarPageList.js");
 
-                function p(e) {
+                function m(e) {
                     var t = a.extend(!0, {
                         headerChrome: !0,
                         isBorderBox: !1,
@@ -19387,7 +20090,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     }, e);
                     n.call(this, t), this.api = t.api, this.gateway = t.gateway || new t.gatewayClass(this.api), this.router = t.router
                 }
-                s(p, n, {
+                s(m, n, {
                     defaults: a.extend({}, n.prototype.defaults, {
                         clearIcon: new l({
                             tagName: "button",
@@ -19416,8 +20119,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         }, 0)
                     },
                     onClickOverlayContent: function() {
-                        this.$el.find(".cancel").
-                        trigger("click")
+                        this.$el.find(".cancel").trigger("click")
                     },
                     onClickOverlayContentDiv: function(e) {
                         e.stopPropagation()
@@ -19426,7 +20128,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         this.$input.trigger("blur")
                     },
                     onClickResult: function(e) {
-                        var t = this.$el.find(e.currentTarget),
+                        var
+                            t = this.$el.find(e.currentTarget),
                             r = t.closest("li");
                         this.emit("search-result-click", {
                             result: r,
@@ -19448,8 +20151,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         function a() {
                             t.$spinner.hide(), clearTimeout(e)
                         }
-                        this.$el.find(".overlay-content").append(s.$el), n.prototype.postRender.call(this), this.$el.find(".overlay-title").append(r.clearIcon.$el), this.$input = this.$el.find("input"), this.$clear = this.$el.find(".clear"), this.$searchContent = s.$el.hide(), this.$resultContainer = s.$el.find(
-                            ".results-list-container"), this.$spinner = s.$el.find(".spinner-container"), this.on("search-start", function(r) {
+                        this.$el.find(".overlay-content").append(s.$el), n.prototype.postRender.call(this), this.$el.find(".overlay-title").append(r.clearIcon.$el), this.$input = this.$el.find("input"), this.$clear = this.$el.find(".clear"), this.$searchContent = s.$el.hide(), this.$resultContainer = s.$el.find(".results-list-container"), this.$spinner = s.$el.find(".spinner-container"), this.on("search-start", function(r) {
                             e && a(), e = setTimeout(function() {
                                 t.$spinner.show()
                             }, 2e3 - r.delay)
@@ -19473,14 +20175,14 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                                 query: r,
                                 delay: s
                             }), n = e.gateway.search(r), e._pendingQuery = n.then(function(r) {
-                                r && r.query === e.$input.val() && (e.$el.toggleClass("no-results", 0 === r.results.length), e.$searchContent.show().find("p").hide().filter(r.results.length ? ".with-results" :
-                                    ".without-results").show(), new u({
+                                r && r.query === e.$input.val() && (e.$el.toggleClass("no-results", 0 === r.results.length), e.$searchContent.show().find("p").hide().filter(r.results.length ? ".with-results" : ".without-results").show(), new u({
                                     api: t,
                                     funnel: "search",
                                     pages: r.results,
                                     el: e.$resultContainer
                                 }), e.$results = e.$resultContainer.find("li"), e.emit("search-results", {
-                                    results: r.results
+                                    results: r.
+                                    results
                                 }))
                             }).promise({
                                 abort: function() {
@@ -19492,7 +20194,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                     resetSearch: function() {
                         this.$el.find(".overlay-content").children().hide()
                     }
-                }), e.exports = p
+                }), e.exports = m
             },
             "./src/mobile.startup/search/SearchResultsView.js": function(e, t, r) {
                 function s(e) {
@@ -19520,7 +20222,8 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 function o(e, t, r) {
                     return (o = "undefined" != typeof Reflect && Reflect.get ? Reflect.get : function(e, t, r) {
                         var s = function(e, t) {
-                            for (; !Object.prototype.hasOwnProperty.call(e, t) && null !== (e = i(e)););
+                            for (; !Object.prototype.hasOwnProperty.call(e, t) &&
+                                null !== (e = i(e)););
                             return e
                         }(e, t);
                         if (s) {
@@ -19543,11 +20246,11 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                 }
                 var c = r("./src/mobile.startup/View.js"),
                     u = r("./src/mobile.startup/Icon.js"),
-                    p = r("./src/mobile.startup/Anchor.js"),
-                    h = r("./src/mobile.startup/icons.js"),
-                    m = mw.config.get("wgCirrusSearchFeedbackLink"),
-                    d = h.spinner().$el,
-                    f = r("./src/mobile.startup/util.js"),
+                    m = r("./src/mobile.startup/Anchor.js"),
+                    p = r("./src/mobile.startup/icons.js"),
+                    h = mw.config.get("wgCirrusSearchFeedbackLink"),
+                    f = p.spinner().$el,
+                    d = r("./src/mobile.startup/util.js"),
                     g = function(e) {
                         "use strict";
 
@@ -19557,8 +20260,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             }(this, t), a(this, i(t).apply(this, arguments))
                         }
                         return function(e, t) {
-                                if ("function" != typeof t &&
-                                    null !== t) throw new TypeError("Super expression must either be null or a function");
+                                if ("function" != typeof t && null !== t) throw new TypeError("Super expression must either be null or a function");
                                 e.prototype = Object.create(t && t.prototype, {
                                     constructor: {
                                         value: e,
@@ -19572,7 +20274,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             }(t, [{
                                 key: "preRender",
                                 value: function() {
-                                    m && (this.options.feedback = {
+                                    h && (this.options.feedback = {
                                         prompt: mw.msg("mobile-frontend-search-feedback-prompt")
                                     })
                                 }
@@ -19584,9 +20286,9 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                                         href: "#",
                                         name: "search-content",
                                         label: mw.msg("mobile-frontend-search-content")
-                                    }).$el), this.$el.find(".spinner-container").append(d), m && this.$el.find(".search-feedback").append(new p({
+                                    }).$el), this.$el.find(".spinner-container").append(f), h && this.$el.find(".search-feedback").append(new m({
                                         label: mw.msg("mobile-frontend-search-feedback-link-text"),
-                                        href: m
+                                        href: h
                                     }).$el)
                                 }
                             }, {
@@ -19597,7 +20299,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                             }, {
                                 key: "template",
                                 get: function() {
-                                    return f.template(
+                                    return d.template(
                                         '\n<div class="search-results-view">\n\t<div class="search-content overlay-header search-results-view">\n\t\t<ul>\n\t\t\t<li>{{! search content icon goes here }}</li>\n\t\t</ul>\n\t\t<div class="caption">\n\t\t\t<p class="with-results">{{searchContentLabel}}</p>\n\t\t\t<p class="without-results">{{noResultsMsg}}</p>\n\t\t\t<p class="without-results">{{{searchContentNoResultsMsg}}}</p>\n\t\t</div>\n\t</div>\n\t<div class="spinner-container position-fixed"></div>\n\t<div class="results">\n\t\t<div class="results-list-container"></div>\n\t\t{{#feedback}}\n\t\t\t<div class="search-feedback">\n\t\t\t\t{{prompt}}\n\t\t\t</div>\n\t\t{{/feedback}}\n\t</div>\n</div>')
                                 }
                             }]), t
@@ -19648,31 +20350,6 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
                         return s.require("mobile.talk.overlays/talkBoard")(e)
                     })))
                 }
-            },
-            "./src/mobile.startup/toc/TableOfContents.js": function(e, t, r) {
-                var s = r("./src/mobile.startup/View.js"),
-                    n = r("./src/mobile.startup/mfExtend.js"),
-                    a = r("./src/mobile.startup/util.js"),
-                    o = r("./src/mobile.startup/Icon.js");
-
-                function i(e) {
-                    s.call(this, a.extend({
-                        className: "toc-mobile",
-                        contentsMsg: mw.msg("toc")
-                    }, e))
-                }
-                n(i, s, {
-                    templatePartials: {
-                        tocHeading: a.template('\n<li>\n\t<a href="#{{anchor}}">{{{line}}}</a>\n\t<ul>\n\t\t{{#subsections}}\n\t\t{{>tocHeading}}\n\t\t{{/subsections}}\n\t</ul>\n</li>\n\t\t')
-                    },
-                    template: a.template('\n<h2><span>{{contentsMsg}}</span></h2>\n<div>\n\t<ul>\n\t{{#sections}}\n\t{{>tocHeading}}\n\t{{/sections}}\n\t</ul>\n</div>\n<div style="clear:both;"></div>\n\t'),
-                    postRender: function() {
-                        new o({
-                            name: "toc",
-                            additionalClassNames: "toc-button"
-                        }).$el.prependTo(this.$el.find("h2"))
-                    }
-                }), e.exports = i
             }
         },
         [
@@ -19681,7 +20358,7 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
     ]);
 }, {
     "css": [
-        ".mf-mw-ui-icon-rotate-anti-clockwise:before{-webkit-transform:rotate(-90deg);-moz-transform:rotate(-90deg);transform:rotate(-90deg)}.mf-mw-ui-icon-rotate-clockwise:before{-webkit-transform:rotate(90deg);-moz-transform:rotate(90deg);transform:rotate(90deg)}.mf-mw-ui-icon-rotate-flip:before{-webkit-transform:scaleY(-1);-moz-transform:scaleY(-1);transform:scaleY(-1)}.rtl .mf-mw-ui-icon-rotate-anti-clockwise:before{-webkit-transform:rotate(90deg);-moz-transform:rotate(90deg);transform:rotate(90deg)}.rtl .mf-mw-ui-icon-rotate-clockwise:before{-webkit-transform:rotate(-90deg);-moz-transform:rotate(-90deg);transform:rotate(-90deg)}     .panel \u003E p{padding:1em}.panel input,.panel textarea{border-radius:0;padding:16px 1em}#bodyContent .panel{background-color:#eaecf0;clear:both;margin-top:1em;text-align:center}.promised-view{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center}.overlay-content .loading.spinner,.media-viewer .loading.spinner,.content .loading.spinner{text-align:center;background-position:50%;margin:8px auto}.drawer{text-align:center;padding-top:0;padding-bottom:1em;max-width:500px;margin:0 auto}.drawer.text{line-height:1;font-size:0.9em;text-align:left;padding-top:0.5em}.drawer p{line-height:1.4;margin-top:0.5em}.drawer p,.drawer a:not(:last-child),.drawer .mw-ui-button{margin-bottom:1em}.drawer .mw-ui-icon.cancel{display:block;margin:0.5em auto 0.625em auto}.has-drawer--with-scroll-locked{overflow:hidden}.has-drawer.drawer-visible .transparent-shield{visibility:visible;opacity:0.5}.overlay-enabled .drawer{display:none !important}.overlay.overlay-loading{display:flex;align-items:center;justify-content:center;background-color:rgba(255,255,255,0.5)}.overlay.overlay-loading .header{display:none}.overlay.overlay-loading .overlay-content{overflow:hidden} .overlay-enabled #mw-mf-page-center{overflow:hidden;display:block}.overlay-enabled .overlay,.overlay-enabled #mw-mf-page-center{height:100%}.hidden{display:none !important}.overlay{position:absolute;top:0;left:0;width:100%;background:#fff;z-index:1;display:none}.overlay.visible{display:block}.overlay input,.overlay textarea{font-size:16px}.overlay .captcha-word,.overlay .summary{margin:0 0 0.7em;width:100%}.overlay .wikitext-editor{min-height:50%;line-height:1.5;border:0}.overlay .panel{padding-top:12px;padding-bottom:12px;border-bottom:1px solid #eaecf0}.overlay .content .cancel{display:block;margin:1em auto}.overlay .content-header{background-color:#f8f9fa;border-bottom:1px solid #eaecf0;padding-top:20px;padding-bottom:20px;line-height:inherit}.overlay-header .overlay-title{width:100%}.overlay-header .header-action a,.overlay-header .header-action button{display:table-cell;vertical-align:middle;width:auto;padding:0 1.2em;font-weight:bold;white-space:nowrap;text-decoration:none;border-radius:0;cursor:pointer;position:relative}.overlay-header .header-action a:before,.overlay-header .header-action button:before{top:0}.overlay-header .header-action a[disabled],.overlay-header .header-action button[disabled]{opacity:0.5}.overlay-header .header-action a:focus,.overlay-header .header-action button:focus{outline:0}.overlay-header .header-action .continue,.overlay-header .header-action .submit,.overlay-header .header-action .progressive{background-color:#3366cc;color:#fff}.overlay-header .header-action .continue[disabled],.overlay-header .header-action .submit[disabled],.overlay-header .header-action .progressive[disabled]{background-color:#c8ccd1;opacity:1}.overlay-header .header-action .oo-ui-widget{margin-right:1em}.overlay-header button{cursor:pointer}.overlay-header .submit{background-color:#3366cc;color:#fff}.overlay-header h2{display:table;width:100%;font-size:1em}.overlay-header h2 \u003E *{width:1em;display:table-cell;padding-right:0.4em}.overlay-header h2 span{width:auto;max-width:1em}.overlay-header \u003E ul,.overlay-header \u003E div{display:table-cell;vertical-align:middle}.overlay-header \u003E ul li{display:block}.overlay-header-container,.overlay-footer-container{width:100%;background:#fff;z-index:2}.overlay-header-container.position-fixed,.overlay-footer-container.position-fixed{left:0;right:0}.overlay-header-container{top:0}.overlay-footer-container{background-color:#fff;bottom:0;border-top:1px solid #c8ccd1}.overlay-footer-container a{display:block;padding:1em 1em 1em 10px;text-align:center}.overlay-bottom{border-top:1px solid #c8ccd1;top:auto;bottom:0;height:auto !important;background:#f8f9fa}.overlay-bottom .overlay-header-container{background:#f8f9fa}@media all and (min-width:720px){.overlay .panel{padding-top:12px;padding-bottom:12px}}@media print{.collapsible-heading .indicator,.collapsible-heading .edit-page{display:none}.client-js .collapsible-block{display:block}}.language-overlay{background-color:#eaecf0}.language-overlay .overlay-content{background-color:#eaecf0;position:relative;min-height:100%}.drawer.references-drawer{background-color:#000000;color:#c8ccd1;max-height:50%;overflow-y:auto;padding:20px}.drawer.references-drawer .mw-ui-icon:before{opacity:0.5}.drawer.references-drawer a{color:#69f}.drawer.references-drawer .references-drawer__header{padding-bottom:20px}.drawer.references-drawer .references-drawer__header:after{content:'';display:table;clear:both}.drawer.references-drawer .references-drawer__title{color:#72777d;cursor:default;letter-spacing:0.2em;font-size:0.75em;padding-top:0.25em;text-transform:uppercase}.drawer.references-drawer .cancel{cursor:pointer;font-size:0.8em;margin:-1em -1em -1em 0; padding:1em 0;position:absolute;right:20px;top:20px}.drawer.references-drawer .mw-cite-backlink{display:none}.drawer.references-drawer .reference-text{line-height:1.4}@media all and (min-width:720px){.drawer.references-drawer{max-height:400px}}.overlay.search-overlay{background:#fff}.overlay.search-overlay a.mw-ui-icon{display:inline-block}.overlay.search-overlay .spinner-container{background-color:#ffffff;bottom:0;display:none;left:0;opacity:0.7;right:0;z-index:2}.overlay.search-overlay .spinner-container .spinner{display:block;left:50%;margin-left:-9px;position:absolute;top:10%}.overlay.search-overlay .search-box{display:block}.overlay.search-overlay .results,.overlay.search-overlay .search-feedback{background-color:#fff}.overlay.search-overlay .overlay-header{background-color:transparent}.overlay.search-overlay .header-cancel{display:none}.overlay.search-overlay .header-action{width:auto}.overlay.search-overlay .header-action button:before{top:auto}.overlay.search-overlay .overlay-title{position:relative;padding-left:15px}.overlay.search-overlay .header input{padding-right:17.5px}.overlay.search-overlay .header input::-ms-clear{display:none}.overlay.search-overlay .overlay-content{position:relative;height:100%;width:100%}.overlay.search-overlay .search-content{border-bottom:1px solid #c8ccd1;cursor:pointer}.overlay.search-overlay .search-content .caption{padding:1em 0}.overlay.search-overlay .search-content.overlay-header{padding:0}.overlay.search-overlay .results{box-shadow:0 3px 3px 0 rgba(117,117,117,0.3)}.overlay.search-overlay .results li:last-child{border-bottom:0}.overlay.search-overlay .results h2{font:inherit}.overlay.search-overlay li.page-summary{display:table;height:70px;width:100%}.overlay.search-overlay li.page-summary .title{display:table-cell;vertical-align:middle}.overlay.search-overlay li.page-summary h3{margin:0;font-weight:normal}.overlay.search-overlay li.page-summary h3 strong{text-decoration:none}.overlay.search-overlay li.page-summary .wikidata-description{font-size:0.8em;margin-top:0.5em}.overlay.search-overlay .search-feedback{box-shadow:0 3px 3px 0 rgba(117,117,117,0.3);border-top:1px solid #c8ccd1;font-size:0.8em;padding:0.5em 1em}.overlay.search-overlay.no-results .search-feedback{border-top:0}@-webkit-keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@-webkit-keyframes fadeOut{from{opacity:1}to{opacity:0}}@keyframes fadeOut{from{opacity:1}to{opacity:0}}.animations .overlay.search-overlay.visible{-webkit-animation:fadeIn 0.5s;-moz-animation:fadeIn 0.5s;animation:fadeIn 0.5s}.animations .overlay.search-overlay.overlay-ios{-webkit-animation:none;-moz-animation:none;animation:none}.client-js .toc-mobile{background-color:#f8f9fa;border:solid 1px #eaecf0}.client-js .toc-mobile .toc-button{float:left;display:block;font-size:0.8em}.client-js .toc-mobile .collapsible-heading{visibility:visible;background-position:right center}.client-js .toc-mobile .collapsible-heading .indicator{margin:0.2em 0.4em 0 0;float:right;font-size:0.6em}.client-js .toc-mobile .collapsible-block{border-bottom:0;margin-left:52px;margin-right:24px;font-size:0.7em;width:auto}.client-js .toc-mobile .collapsible-block \u003E ul{padding-bottom:1.3em}.client-js .toc-mobile .collapsible-block ul{list-style:none;margin-bottom:1px}.client-js .toc-mobile .collapsible-block ul li{padding-top:0.8em;line-height:1.2}.client-js .toc-mobile .collapsible-block ul li a{white-space:pre-wrap;word-break:break-word}.animations .watch-this-article:before{-webkit-backface-visibility:hidden;-webkit-transition:-webkit-transform 0.5s;-moz-transition:-moz-transform 0.5s;transition:transform 0.5s}.animations .watch-this-article.watched:before{-webkit-transform:rotate(72deg);-moz-transform:rotate(72deg);transform:rotate(72deg)}.overlay.media-viewer{background:#000;padding-top:0}.overlay.media-viewer .overlay-content{height:100%;width:100%;margin:0;max-width:none}.overlay.media-viewer .header-container{background:transparent;border-bottom:0}.overlay.media-viewer .main{height:100%;position:relative;width:100%}.overlay.media-viewer .cancel{position:absolute;right:0;top:10px;z-index:2}.cloaked-element{opacity:0;position:absolute;top:0;left:0;right:0;bottom:0}.position-fixed{position:fixed !important}.touch-events :focus{outline:0}        .drawer{background-color:#f8f9fa;position:absolute;width:100%}.mw-notification,.toast,.drawer{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;position:fixed;bottom:0;left:0;right:0;box-shadow:0 -1px 8px 0 rgba(0,0,0,0.35);word-wrap:break-word;z-index:4;display:none}.mw-notification.visible,.toast.visible,.drawer.visible,.mw-notification.mw-notification-visible,.toast.mw-notification-visible,.drawer.mw-notification-visible{display:block}.mw-notification,.toast{font-size:0.875em;padding:0.9em 1em;background-color:#222222;color:#fff;margin:0 10% 20px;width:80%;text-align:center;border-radius:2px}.mw-notification.mw-notification-type-error,.toast.mw-notification-type-error{background-image:url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%23d33%22 fill-rule=%22evenodd%22 d=%22M11.643 22.364c1.234 0 2.235-.956 2.235-2.136h-4.47c0 1.18 1 2.136 2.234 2.136zm7.25-12.284v3.998l1.77 3.603v1.1H2.623v-1.1l1.77-3.602V10.08c0-2.894 1.822-5.41 4.475-6.47.26-1.283 1.415-2.227 2.773-2.227s2.51.944 2.776 2.227c2.653 1.06 4.477 3.576 4.477 6.47zM12.92 4.974h-2.554c-2.438.553-4.255 2.64-4.255 5.14v4.474l-1.7 2.44h14.47l-1.702-2.44v-4.474c.024-4.076-3.616-5.09-4.255-5.14z%22/%3E%3C/svg%3E\");background-size:24px;background-position:16px 50%;background-repeat:no-repeat;padding-left:5%;width:75%;border:0}.mw-notification a,.toast a{color:#ffffff;text-decoration:underline}.mw-notification-area{z-index:4;position:fixed;bottom:0;width:100%}.animations .mw-notification,.animations .drawer{display:block;visibility:hidden; -webkit-transform:translate(0,100px);-moz-transform:translate(0,100px);transform:translate(0,100px);bottom:100px;opacity:0}.animations .mw-notification.animated,.animations .drawer.animated,.animations .mw-notification.mw-notification-tag-toast,.animations .drawer.mw-notification-tag-toast{-webkit-backface-visibility:hidden;-webkit-transition:-webkit-transform 0.25s,opacity 0.25s,visibility 0s 0.25s,bottom 0s 0.25s;-moz-transition:-moz-transform 0.25s,opacity 0.25s,visibility 0s 0.25s,bottom 0s 0.25s;transition:transform 0.25s,opacity 0.25s,visibility 0s 0.25s,bottom 0s 0.25s}.animations .mw-notification.visible,.animations .drawer.visible,.animations .mw-notification.mw-notification-visible,.animations .drawer.mw-notification-visible{bottom:0;-webkit-backface-visibility:hidden;-webkit-transition:-webkit-transform 0.25s,opacity 0.25s;-moz-transition:-moz-transform 0.25s,opacity 0.25s;transition:transform 0.25s,opacity 0.25s;visibility:visible;opacity:1;-webkit-transform:translate(0,0);-moz-transform:translate(0,0);transform:translate(0,0)}.overlay{padding-top:3.375em}.overlay textarea{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;width:100%;padding:10px 16px 10px 16px;resize:none}.overlay \u003E ul,.overlay button{width:3.375em}.overlay .license{font-size:0.875em;color:#72777d;margin-top:0.5em;line-height:1.4}.overlay-header .header-action \u003E a,.overlay-header .header-action \u003E button{height:3.375em}.overlay-header .overlay-title{padding:0.15em 0}.overlay-header .overlay-title:last-child{padding-right:1em}@media all and (min-width:1000px){.overlay-header{max-width:995.3px}}.client-js .collapsible-heading,.client-js .collapsible-block{clear:left}.client-js .collapsible-heading{cursor:pointer;position:relative}.client-js .collapsible-heading .indicator{float:left;margin-top:0.7em;font-size:0.4em}.overlay.search-overlay .spinner-container{top:3.375em}.overlay.search-overlay .clear{position:absolute;top:0.9em;right:0}@media all and (min-width:720px){.overlay.search-overlay .search-box{display:table-cell}.overlay.search-overlay .spinner-container,.overlay.search-overlay .search-content,.overlay.search-overlay .results{width:23.4375em;margin-left:13.5625em}.overlay.search-overlay .overlay-title{width:23.4375em;padding-left:13.5625em}.overlay.search-overlay .spinner-container{left:auto;right:auto}.overlay.search-overlay ul{width:auto}}@media all and (min-width:1000px){.overlay.search-overlay .overlay-content{max-width:995.3px}}@media screen and (min-width:1000px){.language-overlay .overlay-content{margin:0;min-width:100%}}"
+        ".mf-mw-ui-icon-rotate-anti-clockwise:before{-webkit-transform:rotate(-90deg);-moz-transform:rotate(-90deg);transform:rotate(-90deg)}.mf-mw-ui-icon-rotate-clockwise:before{-webkit-transform:rotate(90deg);-moz-transform:rotate(90deg);transform:rotate(90deg)}.mf-mw-ui-icon-rotate-flip:before{-webkit-transform:scaleY(-1);-moz-transform:scaleY(-1);transform:scaleY(-1)}.rtl .mf-mw-ui-icon-rotate-anti-clockwise:before{-webkit-transform:rotate(90deg);-moz-transform:rotate(90deg);transform:rotate(90deg)}.rtl .mf-mw-ui-icon-rotate-clockwise:before{-webkit-transform:rotate(-90deg);-moz-transform:rotate(-90deg);transform:rotate(-90deg)}     .panel \u003E p{padding:1em}.panel input,.panel textarea{border-radius:0;padding:16px 1em}#bodyContent .panel{background-color:#eaecf0;clear:both;margin-top:1em;text-align:center}.promised-view{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center}.overlay-content .loading.spinner,.media-viewer .loading.spinner,.content .loading.spinner{text-align:center;background-position:50%;margin:8px auto}.drawer{text-align:center;padding-top:0;padding-bottom:1em;max-width:500px;margin:0 auto}.drawer.text{line-height:1;font-size:0.9em;text-align:left;padding-top:0.5em}.drawer p{line-height:1.4;margin-top:0.5em}.drawer p,.drawer a:not(:last-child),.drawer .mw-ui-button{margin-bottom:1em}.drawer .mw-ui-icon.cancel{display:block;margin:0.5em auto 0.625em auto}.has-drawer--with-scroll-locked{overflow:hidden}.has-drawer.drawer-visible .transparent-shield{visibility:visible;opacity:0.5}.overlay-enabled .drawer{display:none !important}.overlay.overlay-loading{display:flex;align-items:center;justify-content:center;background-color:rgba(255,255,255,0.5)}.overlay.overlay-loading .header{display:none}.overlay.overlay-loading .overlay-content{overflow:hidden} .overlay-enabled #mw-mf-page-center{overflow:hidden;display:block}.overlay-enabled .overlay,.overlay-enabled #mw-mf-page-center{height:100%}.hidden{display:none !important}.overlay{position:absolute;top:0;left:0;width:100%;background:#fff;z-index:1;display:none}.overlay.visible{display:block}.overlay input,.overlay textarea{font-size:16px}.overlay .captcha-word,.overlay .summary{margin:0 0 0.7em;width:100%}.overlay .wikitext-editor{min-height:50%;line-height:1.5;border:0}.overlay .panel{padding-top:12px;padding-bottom:12px;border-bottom:1px solid #eaecf0}.overlay .content .cancel{display:block;margin:1em auto}.overlay .content-header{background-color:#f8f9fa;border-bottom:1px solid #eaecf0;padding-top:20px;padding-bottom:20px;line-height:inherit}.overlay-header .overlay-title{width:100%}.overlay-header .header-action a,.overlay-header .header-action button{display:table-cell;vertical-align:middle;width:auto;padding:0 1.2em;font-weight:bold;white-space:nowrap;text-decoration:none;border-radius:0;cursor:pointer;position:relative}.overlay-header .header-action a:before,.overlay-header .header-action button:before{top:0}.overlay-header .header-action a[disabled],.overlay-header .header-action button[disabled]{opacity:0.5}.overlay-header .header-action a:focus,.overlay-header .header-action button:focus{outline:0}.overlay-header .header-action .continue,.overlay-header .header-action .submit,.overlay-header .header-action .progressive{background-color:#3366cc;color:#fff}.overlay-header .header-action .continue[disabled],.overlay-header .header-action .submit[disabled],.overlay-header .header-action .progressive[disabled]{background-color:#c8ccd1;opacity:1}.overlay-header .header-action .oo-ui-widget{margin-right:1em}.overlay-header button{cursor:pointer}.overlay-header .submit{background-color:#3366cc;color:#fff}.overlay-header h2{display:table;width:100%;font-size:1em}.overlay-header h2 \u003E *{width:1em;display:table-cell;padding-right:0.4em}.overlay-header h2 span{width:auto;max-width:1em}.overlay-header \u003E ul,.overlay-header \u003E div{display:table-cell;vertical-align:middle}.overlay-header \u003E ul li{display:block}.overlay-header-container,.overlay-footer-container{width:100%;background:#fff;z-index:2}.overlay-header-container.position-fixed,.overlay-footer-container.position-fixed{left:0;right:0}.overlay-header-container{top:0}.overlay-footer-container{background-color:#fff;bottom:0;border-top:1px solid #c8ccd1}.overlay-footer-container a{display:block;padding:1em 1em 1em 10px;text-align:center}.overlay-bottom{border-top:1px solid #c8ccd1;top:auto;bottom:0;height:auto !important;background:#f8f9fa}.overlay-bottom .overlay-header-container{background:#f8f9fa}@media all and (min-width:720px){.overlay .panel{padding-top:12px;padding-bottom:12px}}.client-js .collapsible-heading{cursor:pointer}.client-js .collapsible-heading .indicator{display:inline-block;vertical-align:0.3em;margin-left:-1em;font-size:0.4em}@media print{.collapsible-heading .indicator,.collapsible-heading .edit-page{display:none}.client-js .collapsible-block{display:block}}.language-overlay{background-color:#eaecf0}.language-overlay .overlay-content{background-color:#eaecf0;position:relative;min-height:100%}.drawer.references-drawer{background-color:#000000;color:#c8ccd1;max-height:50%;overflow-y:auto;padding:20px}.drawer.references-drawer .mw-ui-icon:before{opacity:0.5}.drawer.references-drawer a{color:#69f}.drawer.references-drawer .references-drawer__header{padding-bottom:20px}.drawer.references-drawer .references-drawer__header:after{content:'';display:table;clear:both}.drawer.references-drawer .references-drawer__title{color:#72777d;cursor:default;letter-spacing:0.2em;font-size:0.75em;padding-top:0.25em;text-transform:uppercase}.drawer.references-drawer .cancel{cursor:pointer;font-size:0.8em;margin:-1em -1em -1em 0; padding:1em 0;position:absolute;right:20px;top:20px}.drawer.references-drawer .mw-cite-backlink{display:none}.drawer.references-drawer .reference-text{line-height:1.4}@media all and (min-width:720px){.drawer.references-drawer{max-height:400px}}.overlay.search-overlay{background:#fff}.overlay.search-overlay a.mw-ui-icon{display:inline-block}.overlay.search-overlay .spinner-container{background-color:#ffffff;bottom:0;display:none;left:0;opacity:0.7;right:0;z-index:2}.overlay.search-overlay .spinner-container .spinner{display:block;left:50%;margin-left:-1.75em;position:absolute;top:10%}.overlay.search-overlay .search-box{display:block}.overlay.search-overlay .results,.overlay.search-overlay .search-feedback{background-color:#fff}.overlay.search-overlay .overlay-header{background-color:transparent}.overlay.search-overlay .header-cancel{display:none}.overlay.search-overlay .header-action{width:auto}.overlay.search-overlay .header-action button:before{top:auto}.overlay.search-overlay .overlay-title{position:relative;padding-left:15px}.overlay.search-overlay .header input{padding-right:3em}.overlay.search-overlay .header input::-ms-clear{display:none}.overlay.search-overlay .overlay-content{position:relative;height:100%;width:100%}.overlay.search-overlay .search-content{border-bottom:1px solid #c8ccd1;cursor:pointer}.overlay.search-overlay .search-content .caption{padding:1em 0}.overlay.search-overlay .search-content.overlay-header{padding:0}.overlay.search-overlay .results{box-shadow:0 3px 3px 0 rgba(117,117,117,0.3)}.overlay.search-overlay .results li:last-child{border-bottom:0}.overlay.search-overlay .results h2{font:inherit}.overlay.search-overlay li.page-summary{display:table;height:70px;width:100%}.overlay.search-overlay li.page-summary .title{display:table-cell;vertical-align:middle}.overlay.search-overlay li.page-summary h3{margin:0;font-weight:normal}.overlay.search-overlay li.page-summary h3 strong{text-decoration:none}.overlay.search-overlay li.page-summary .wikidata-description{font-size:0.8em;margin-top:0.5em}.overlay.search-overlay .search-feedback{box-shadow:0 3px 3px 0 rgba(117,117,117,0.3);border-top:1px solid #c8ccd1;font-size:0.8em;padding:0.5em 1em}.overlay.search-overlay.no-results .search-feedback{border-top:0}@-webkit-keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@-webkit-keyframes fadeOut{from{opacity:1}to{opacity:0}}@keyframes fadeOut{from{opacity:1}to{opacity:0}}.animations .overlay.search-overlay.visible{-webkit-animation:fadeIn 0.5s;-moz-animation:fadeIn 0.5s;animation:fadeIn 0.5s}.animations .overlay.search-overlay.overlay-ios{-webkit-animation:none;-moz-animation:none;animation:none}.animations .watch-this-article:before{-webkit-backface-visibility:hidden;-webkit-transition:-webkit-transform 0.5s;-moz-transition:-moz-transform 0.5s;transition:transform 0.5s}.animations .watch-this-article.watched:before{-webkit-transform:rotate(72deg);-moz-transform:rotate(72deg);transform:rotate(72deg)}.overlay.media-viewer{background:#000;padding-top:0}.overlay.media-viewer .overlay-content{height:100%;width:100%;margin:0;max-width:none}.overlay.media-viewer .header-container{background:transparent;border-bottom:0}.overlay.media-viewer .main{height:100%;position:relative;width:100%}.overlay.media-viewer .cancel{position:absolute;right:0;top:10px;z-index:2}.cloaked-element{opacity:0;position:absolute;top:0;left:0;right:0;bottom:0}.position-fixed{position:fixed !important}.touch-events :focus{outline:0}        .drawer{background-color:#f8f9fa;position:absolute;width:100%}.mw-notification,.toast,.drawer{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;position:fixed;bottom:0;left:0;right:0;box-shadow:0 -1px 8px 0 rgba(0,0,0,0.35);word-wrap:break-word;z-index:4;display:none}.mw-notification.visible,.toast.visible,.drawer.visible,.mw-notification.mw-notification-visible,.toast.mw-notification-visible,.drawer.mw-notification-visible{display:block}.mw-notification,.toast{font-size:0.875em;padding:0.9em 1em;background-color:#222222;color:#fff;margin:0 10% 20px;width:80%;text-align:center;border-radius:2px}.mw-notification.mw-notification-type-error,.toast.mw-notification-type-error{background-image:url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%23d33%22 fill-rule=%22evenodd%22 d=%22M11.643 22.364c1.234 0 2.235-.956 2.235-2.136h-4.47c0 1.18 1 2.136 2.234 2.136zm7.25-12.284v3.998l1.77 3.603v1.1H2.623v-1.1l1.77-3.602V10.08c0-2.894 1.822-5.41 4.475-6.47.26-1.283 1.415-2.227 2.773-2.227s2.51.944 2.776 2.227c2.653 1.06 4.477 3.576 4.477 6.47zM12.92 4.974h-2.554c-2.438.553-4.255 2.64-4.255 5.14v4.474l-1.7 2.44h14.47l-1.702-2.44v-4.474c.024-4.076-3.616-5.09-4.255-5.14z%22/%3E%3C/svg%3E\");background-size:24px;background-position:16px 50%;background-repeat:no-repeat;padding-left:5%;width:75%;border:0}.mw-notification a,.toast a{color:#ffffff;text-decoration:underline}.mw-notification-area{z-index:4;position:fixed;bottom:0;width:100%}.animations .mw-notification,.animations .drawer{display:block;visibility:hidden; -webkit-transform:translate(0,100px);-moz-transform:translate(0,100px);transform:translate(0,100px);bottom:100px;opacity:0}.animations .mw-notification.animated,.animations .drawer.animated,.animations .mw-notification.mw-notification-tag-toast,.animations .drawer.mw-notification-tag-toast{-webkit-backface-visibility:hidden;-webkit-transition:-webkit-transform 0.25s,opacity 0.25s,visibility 0s 0.25s,bottom 0s 0.25s;-moz-transition:-moz-transform 0.25s,opacity 0.25s,visibility 0s 0.25s,bottom 0s 0.25s;transition:transform 0.25s,opacity 0.25s,visibility 0s 0.25s,bottom 0s 0.25s}.animations .mw-notification.visible,.animations .drawer.visible,.animations .mw-notification.mw-notification-visible,.animations .drawer.mw-notification-visible{bottom:0;-webkit-backface-visibility:hidden;-webkit-transition:-webkit-transform 0.25s,opacity 0.25s;-moz-transition:-moz-transform 0.25s,opacity 0.25s;transition:transform 0.25s,opacity 0.25s;visibility:visible;opacity:1;-webkit-transform:translate(0,0);-moz-transform:translate(0,0);transform:translate(0,0)}.overlay{padding-top:3.375em}.overlay textarea{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;width:100%;padding:10px 16px 10px 16px;resize:none}.overlay \u003E ul,.overlay button{width:3.375em}.overlay .license{font-size:0.875em;color:#72777d;margin-top:0.5em;line-height:1.4}.overlay-header .header-action \u003E a,.overlay-header .header-action \u003E button{height:3.375em}.overlay-header .overlay-title{padding:0.15em 0}.overlay-header .overlay-title:last-child{padding-right:1em}@media all and (min-width:1000px){.overlay-header{max-width:995.3px}}.client-js .collapsible-heading,.client-js .collapsible-block{clear:left}.client-js .collapsible-heading{position:relative}.overlay.search-overlay .spinner-container{top:3.375em}.overlay.search-overlay .clear{position:absolute;top:0.9em;right:0}@media all and (min-width:720px){.overlay.search-overlay .search-box{display:table-cell}.overlay.search-overlay .spinner-container,.overlay.search-overlay .search-content,.overlay.search-overlay .results{width:23.4375em;margin-left:13.5625em}.overlay.search-overlay .overlay-title{width:23.4375em;padding-left:13.5625em}.overlay.search-overlay .spinner-container{left:auto;right:auto}.overlay.search-overlay ul{width:auto}}@media all and (min-width:1000px){.overlay.search-overlay .overlay-content{max-width:995.3px}}@media screen and (min-width:1000px){.language-overlay .overlay-content{margin:0;min-width:100%}}"
     ]
 }, {
     "echo-mark-all-as-read": "Mark all as read",
@@ -19731,41 +20408,38 @@ mw.loader.implement("mobile.startup@0l9nr6u", function($, jQuery, require, modul
     "unwatch": "Unwatch",
     "watch": "Watch"
 });
-mw.loader.implement("mobile.init.icons@1s7x1uf", null, {
+mw.loader.implement("mobile.messageBox.styles@v9s22", null, {
+    "css": [".previewnote p,.errorbox,.warningbox,.successbox,.mw-revision{color:#000000;margin:0 0 1em;padding-top:1em;padding-bottom:1em}.previewnote p,.warningbox,.mw-revision{background-color:#eaecf0;border:1px solid #c8ccd1}.errorbox{background-color:#fee7e6}.successbox{background-color:#d5fdf4}.errorbox h2,.warningbox h2,.successbox h2,.mw-revision h2{font:bold 100% -apple-system,'BlinkMacSystemFont','Segoe UI','Roboto','Lato','Helvetica','Arial',sans-serif;padding:0;margin:0 0 0.5em 0}.errorbox a,.warningbox a,.successbox a,.mw-revision a{margin-bottom:1em}"]
+});
+mw.loader.implement("mobile.ooui.icons@1fb1m", null, {
     "css": [
-        ".oo-ui-icon-close,.mw-ui-icon-close:before{background-image:url(/w/load.php?modules=mobile.init.icons\u0026image=close\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Eclose%3C/title%3E%3Cpath d=%22M4.34 2.93l12.73 12.73-1.41 1.41L2.93 4.35z%22/%3E%3Cpath d=%22M17.07 4.34L4.34 17.07l-1.41-1.41L15.66 2.93z%22/%3E%3C/svg%3E\")}.oo-ui-image-invert.oo-ui-icon-close,.mw-ui-icon-close-invert:before{background-image:url(/w/load.php?modules=mobile.init.icons\u0026image=close\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Eclose%3C/title%3E%3Cg fill=%22%23fff%22%3E%3Cpath d=%22M4.34 2.93l12.73 12.73-1.41 1.41L2.93 4.35z%22/%3E%3Cpath d=%22M17.07 4.34L4.34 17.07l-1.41-1.41L15.66 2.93z%22/%3E%3C/g%3E%3C/svg%3E\")}.oo-ui-image-progressive.oo-ui-icon-close,.mw-ui-icon-close-progressive:before{background-image:url(/w/load.php?modules=mobile.init.icons\u0026image=close\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Eclose%3C/title%3E%3Cg fill=%22%2336c%22%3E%3Cpath d=%22M4.34 2.93l12.73 12.73-1.41 1.41L2.93 4.35z%22/%3E%3Cpath d=%22M17.07 4.34L4.34 17.07l-1.41-1.41L15.66 2.93z%22/%3E%3C/g%3E%3C/svg%3E\")}"
+        ".mw-ui-icon-mf-alert:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=alert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E %3Ctitle%3E alert %3C/title%3E %3Cpath d=%22M11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E %3C/svg%3E\")}.mw-ui-icon-mf-alert-base20:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=alert\u0026variant=base20\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E alert %3C/title%3E%3Cg fill=%22%2354595d%22%3E %3Cpath d=%22M11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-alert-gray:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=alert\u0026variant=gray\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E alert %3C/title%3E%3Cg fill=%22%23a2a9b1%22%3E %3Cpath d=%22M11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-alert-invert:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=alert\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E alert %3C/title%3E%3Cg fill=%22%23fff%22%3E %3Cpath d=%22M11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-close:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=close\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E %3Ctitle%3E close %3C/title%3E %3Cpath d=%22M4.34 2.93l12.73 12.73-1.41 1.41L2.93 4.35z%22/%3E %3Cpath d=%22M17.07 4.34L4.34 17.07l-1.41-1.41L15.66 2.93z%22/%3E %3C/svg%3E\")}.mw-ui-icon-mf-close-base20:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=close\u0026variant=base20\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E close %3C/title%3E%3Cg fill=%22%2354595d%22%3E %3Cpath d=%22M4.34 2.93l12.73 12.73-1.41 1.41L2.93 4.35z%22/%3E %3Cpath d=%22M17.07 4.34L4.34 17.07l-1.41-1.41L15.66 2.93z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-close-gray:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=close\u0026variant=gray\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E close %3C/title%3E%3Cg fill=%22%23a2a9b1%22%3E %3Cpath d=%22M4.34 2.93l12.73 12.73-1.41 1.41L2.93 4.35z%22/%3E %3Cpath d=%22M17.07 4.34L4.34 17.07l-1.41-1.41L15.66 2.93z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-close-invert:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=close\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E close %3C/title%3E%3Cg fill=%22%23fff%22%3E %3Cpath d=%22M4.34 2.93l12.73 12.73-1.41 1.41L2.93 4.35z%22/%3E %3Cpath d=%22M17.07 4.34L4.34 17.07l-1.41-1.41L15.66 2.93z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-arrowPrevious:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=arrowPrevious\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E %3Ctitle%3E previous %3C/title%3E %3Cpath d=%22M5.83 9l5.58-5.58L10 2l-8 8 8 8 1.41-1.41L5.83 11H18V9z%22/%3E %3C/svg%3E\")}.mw-ui-icon-mf-arrowPrevious-base20:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=arrowPrevious\u0026variant=base20\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E previous %3C/title%3E%3Cg fill=%22%2354595d%22%3E %3Cpath d=%22M5.83 9l5.58-5.58L10 2l-8 8 8 8 1.41-1.41L5.83 11H18V9z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-arrowPrevious-gray:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=arrowPrevious\u0026variant=gray\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E previous %3C/title%3E%3Cg fill=%22%23a2a9b1%22%3E %3Cpath d=%22M5.83 9l5.58-5.58L10 2l-8 8 8 8 1.41-1.41L5.83 11H18V9z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-arrowPrevious-invert:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=arrowPrevious\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E previous %3C/title%3E%3Cg fill=%22%23fff%22%3E %3Cpath d=%22M5.83 9l5.58-5.58L10 2l-8 8 8 8 1.41-1.41L5.83 11H18V9z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-expand:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=expand\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E %3Ctitle%3E expand %3C/title%3E %3Cpath d=%22M17.5 4.75l-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E %3C/svg%3E\")}.mw-ui-icon-mf-expand-base20:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=expand\u0026variant=base20\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E expand %3C/title%3E%3Cg fill=%22%2354595d%22%3E %3Cpath d=%22M17.5 4.75l-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-expand-gray:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=expand\u0026variant=gray\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E expand %3C/title%3E%3Cg fill=%22%23a2a9b1%22%3E %3Cpath d=%22M17.5 4.75l-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E %3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-expand-invert:before{background-image:url(/w/load.php?modules=mobile.ooui.icons\u0026image=expand\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3E expand %3C/title%3E%3Cg fill=%22%23fff%22%3E %3Cpath d=%22M17.5 4.75l-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E %3C/g%3E%3C/svg%3E\")}"
     ]
 });
-mw.loader.implement("mobile.legacy.icons@1fn1nn2", null, {
-    "css": [".mw-ui-icon-mf-spinner:before{background-image:url(/w/load.php?modules=mobile.legacy.icons\u0026image=mw-ui-icon-mf-spinner%3Abefore\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=mobile.legacy.icons\u0026image=mw-ui-icon-mf-spinner%3Abefore\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.list-thumb-none{background-image:url(/w/load.php?modules=mobile.legacy.icons\u0026image=list-thumb-none\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=mobile.legacy.icons\u0026image=list-thumb-none\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}"]
-});
-mw.loader.implement("mobile.messageBox.styles@05g9509", null, {
-    "css": [".previewnote p,.warningbox,.mw-revision{border:1px solid #c8ccd1;background-color:#eaecf0;color:#222222}.previewnote p,.successbox,.errorbox,.warningbox,.mw-revision{padding-top:1em;padding-bottom:1em;margin:0 0 1em}.errorbox{background-color:#fee7e6;color:#000000}.successbox{background-color:#d5fdf4;color:#000000}.successbox h2,.errorbox h2,.warningbox h2,.mw-revision h2{font:bold 100% -apple-system,'BlinkMacSystemFont','Segoe UI','Roboto','Lato','Helvetica','Arial',sans-serif;padding:0;margin:0 0 0.5em 0}.successbox a,.errorbox a,.warningbox a,.mw-revision a{margin-bottom:1em}"]
-});
-mw.loader.implement("mobile.pagelist.styles@0ptlk19", null, {
+mw.loader.implement("mobile.pagelist.styles@ptlk1", null, {
     "css": [
         ".page-list,.topic-title-list,.site-link-list{overflow:hidden}.page-list li,.topic-title-list li,.site-link-list li{color:#54595d;position:relative;border-bottom:1px solid #eaecf0;padding-top:0.8em;padding-bottom:0.8em;margin:-1px 0 0;line-height:1}.page-list li .watch-this-article,.topic-title-list li .watch-this-article,.site-link-list li .watch-this-article{position:absolute;right:0;top:0.8em;margin-top:1px}.page-list li .watch-this-article button,.topic-title-list li .watch-this-article button,.site-link-list li .watch-this-article button{position:absolute;text-indent:inherit;outline:0}.page-list li \u003E a,.topic-title-list li \u003E a,.site-link-list li \u003E a{display:block;color:#54595d}.page-list li \u003E a:active,.topic-title-list li \u003E a:active,.site-link-list li \u003E a:active,.page-list li \u003E a:hover,.topic-title-list li \u003E a:hover,.site-link-list li \u003E a:hover,.page-list li \u003E a:visited,.topic-title-list li \u003E a:visited,.site-link-list li \u003E a:visited{text-decoration:none;color:#54595d}.page-list.thumbs li,.topic-title-list.thumbs li,.site-link-list.thumbs li,.page-list.side-list li,.topic-title-list.side-list li,.site-link-list.side-list li{padding-left:85px}.page-list .info,.topic-title-list .info,.site-link-list .info{font-size:0.7em;text-transform:uppercase}.page-list .info,.topic-title-list .info,.site-link-list .info,.page-list .component,.topic-title-list .component,.site-link-list .component{color:#72777d;line-height:1.2}.page-list .title h3,.topic-title-list .title h3,.site-link-list .title h3,.page-list .title .mw-mf-user,.topic-title-list .title .mw-mf-user,.site-link-list .title .mw-mf-user,.page-list .title .component,.topic-title-list .title .component,.site-link-list .title .component,.page-list .title .info,.topic-title-list .title .info,.site-link-list .title .info{margin:0.5em 0}.page-list.thumbs .title,.topic-title-list.thumbs .title,.site-link-list.thumbs .title{padding-right:24px}.page-list .list-thumb,.topic-title-list .list-thumb,.site-link-list .list-thumb{position:absolute;width:70px;height:100%;top:0;left:0}.page-list p,.topic-title-list p,.site-link-list p{font-size:0.9em;line-height:normal}.page-list.side-list .list-thumb,.topic-title-list.side-list .list-thumb,.site-link-list.side-list .list-thumb{padding-top:0.8em;padding-bottom:0.8em;color:#222222}.page-list.side-list .list-thumb p,.topic-title-list.side-list .list-thumb p,.site-link-list.side-list .list-thumb p{line-height:1.2;margin:0.5em 0}.page-list.side-list .list-thumb .timestamp,.topic-title-list.side-list .list-thumb .timestamp,.site-link-list.side-list .list-thumb .timestamp{margin-bottom:0.65em}@media all and (min-width:720px){.page-summary-list,.topic-title-list,.site-link-list{padding-top:0;padding-bottom:0}}"
     ]
 });
-mw.loader.implement("mobile.pagesummary.styles@04z8xwn", null, {
+mw.loader.implement("mobile.pagesummary.styles@4z8xw", null, {
     "css": [".page-summary h2,.page-summary h3{font:inherit;font-weight:bold;color:#54595d}.page-summary h2 a,.page-summary h3 a{color:inherit}.page-summary h2 strong,.page-summary h3 strong{text-decoration:underline}.list-header{font-weight:bold;font-size:0.85em;padding-top:0.5em;padding-bottom:0.4em;background-color:#eaecf0;color:#72777d}.list-thumb{background-repeat:no-repeat;background-position:center center}.list-thumb.list-thumb-x{background-size:100% auto}.list-thumb.list-thumb-y{background-size:auto 100%}.list-thumb.list-thumb-none{background-color:#eaecf0;background-size:40px 40px;opacity:0.51}"]
 });
-mw.loader.implement("mobile.site.styles@1abadp5", null, {
+mw.loader.implement("mobile.placeholder.images@g4m73", null, {
+    "css": [
+        ".mw-ui-icon-mf-spinner:before{background-image:url(/w/load.php?modules=mobile.placeholder.images\u0026image=mw-ui-icon-mf-spinner%3Abefore\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=mobile.placeholder.images\u0026image=mw-ui-icon-mf-spinner%3Abefore\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.list-thumb-none{background-image:url(/w/load.php?modules=mobile.placeholder.images\u0026image=list-thumb-none\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=mobile.placeholder.images\u0026image=list-thumb-none\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.userpage-image-placeholder{background-image:url(/w/load.php?modules=mobile.placeholder.images\u0026image=userpage-image-placeholder\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=mobile.placeholder.images\u0026image=userpage-image-placeholder\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.amc-outreach-image{background-image:url(/w/load.php?modules=mobile.placeholder.images\u0026image=amc-outreach-image\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=mobile.placeholder.images\u0026image=amc-outreach-image\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.mf-nearby-image-info{background-image:url(/w/load.php?modules=mobile.placeholder.images\u0026image=mf-nearby-image-info\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=mobile.placeholder.images\u0026image=mf-nearby-image-info\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}"
+    ]
+});
+mw.loader.implement("mobile.site.styles@1abad", null, {
     "css": [
         ".geo-nondefault,.geo-multi-punct, .checkuser-show,.sysop-show,.templateeditor-show,.extendedmover-show,.patroller-show,.extendedconfirmed-show,.autoconfirmed-show, .hide-when-compact, .noprint.portal{display:none} @media screen,handheld{.citation *.printonly{display:none}} .citation{word-wrap:break-word}  .navbar{display:inline;font-size:88%;font-weight:normal}.navbar ul{display:inline;white-space:nowrap}.navbar li{word-spacing:-0.125em}.navbar.mini li span{font-variant:small-caps} .navbox .navbar,.infobox .navbar{font-size:100%}.navbox .navbar{display:block}.navbox-title .navbar{ float:left; text-align:left; margin-right:0.5em;width:6em} .plainlist ul{list-style:none;padding-left:0; }.visualhide{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}  .mw-parser-output .nowrap,.nowraplinks a,.nowraplinks .selflink,sup.reference a{white-space:nowrap}.mw-parser-output .infobox .nowrap{white-space:normal !important} .wrap,.wraplinks a{white-space:normal} .times-serif,span.texhtml{font-family:serif}span.texhtml{white-space:nowrap} .reflist ol.references{list-style-type:inherit} .refbegin-hanging-indents \u003E ul,.refbegin-hanging-indents \u003E dl{list-style-type:none;margin-left:0}.refbegin-hanging-indents \u003E ul \u003E li,.refbegin-hanging-indents \u003E dl \u003E dd{margin-left:0;padding-left:1.0em;text-indent:-1.0em;list-style:none} .flagicon img{min-width:25px} .cnotice{margin-bottom:0 !important} .mbox-text{ padding:0.25em 0.9em}   #content .hlist-separated li:after{font-size:0.8em;color:#333}  .mw-parser-output .hlist ul,.mw-parser-output .hlist ol{padding-left:0} .mw-parser-output .hlist li,.mw-parser-output .hlist dd,.mw-parser-output .hlist dt{margin-right:0}.mw-parser-output .hlist li:after,.mw-parser-output .hlist dd:after{content:\" · \";font-weight:bold}.mw-parser-output .hlist dt:after{content:\":\"} .heading-holder hlist li:after,.mw-parser-output .hlist dd:last-child:after,.mw-parser-output .hlist dt:last-child:after,.mw-parser-output .hlist li:last-child:after{content:none}  .mw-parser-output .hlist dd dd:first-child:before,.mw-parser-output .hlist dd dt:first-child:before,.mw-parser-output .hlist dd li:first-child:before,.mw-parser-output .hlist dt dd:first-child:before,.mw-parser-output .hlist dt dt:first-child:before,.mw-parser-output .hlist dt li:first-child:before,.mw-parser-output .hlist li dd:first-child:before,.mw-parser-output .hlist li dt:first-child:before,.mw-parser-output .hlist li li:first-child:before{content:\" (\";font-weight:normal} .mw-parser-output .hlist dd dd:last-child:after,.mw-parser-output .hlist dd dt:last-child:after,.mw-parser-output .hlist dd li:last-child:after,.mw-parser-output .hlist dt dd:last-child:after,.mw-parser-output .hlist dt dt:last-child:after,.mw-parser-output .hlist dt li:last-child:after,.mw-parser-output .hlist li dd:last-child:after,.mw-parser-output .hlist li dt:last-child:after,.mw-parser-output .hlist li li:last-child:after{content:\") \";font-weight:normal}  .mw-parser-output .hlist ol{counter-reset:listitem} .mw-parser-output .hlist ol \u003E li{counter-increment:listitem} .mw-parser-output .hlist ol \u003E li:before{content:\" \" counter(listitem) \" \";white-space:nowrap} .mw-parser-output .hlist dd ol \u003E li:first-child:before,.mw-parser-output .hlist dt ol \u003E li:first-child:before,.mw-parser-output .hlist li ol \u003E li:first-child:before{content:\" (\" counter(listitem) \" \"} @media print{.navbox,.hatnote,.ambox{display:none}}"
     ]
 });
-mw.loader.implement("mobile.startup.images@0gkum3n", null, {
+mw.loader.implement("mobile.startup.images@19sfe", null, {
     "css": [
-        ".mw-ui-icon-mf-toc:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=toc\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22 viewBox=%220 0 40 40%22%3E%3Cpath fill=%22%23a2a9b1%22 d=%22M2.176 37.586v-6.202c0-.17.113-.298.243-.298h35.16c.13 0 .24.133.24.298v6.202c0 .164-.11.296-.244.296H2.42c-.13 0-.244-.132-.244-.296zm35.648-20.984v6.207c0 .16-.11.292-.243.292H2.42c-.13 0-.244-.135-.244-.298V16.6c0-.16.113-.296.243-.296h35.16c.13 0 .24.136.24.296zM2.176 2.355c0-.132.108-.237.236-.237h21.94c.134 0 .236.105.236.237v6.677a.234.234 0 0 1-.236.237H2.412a.236.236 0 0 1-.236-.24V2.352z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-citation:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=citation\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ereference%3C/title%3E%3Cpath d=%22M15 10l-2.78-2.78L9.44 10V1H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-citation-invert:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=citation\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ereference%3C/title%3E%3Cg fill=%22%23fff%22%3E%3Cpath d=%22M15 10l-2.78-2.78L9.44 10V1H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-error:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=error\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath id=%22Bell%22 fill=%22%23d33%22 fill-rule=%22evenodd%22 d=%22M11.643 22.364c1.234 0 2.235-.956 2.235-2.136h-4.47c0 1.18 1 2.136 2.234 2.136zm7.25-12.284v3.998l1.77 3.603v1.1H2.623v-1.1l1.77-3.602V10.08c0-2.894 1.822-5.41 4.475-6.47.26-1.283 1.415-2.227 2.773-2.227s2.51.944 2.776 2.227c2.653 1.06 4.477 3.576 4.477 6.47zM12.92 4.974h-2.554c-2.438.553-4.255 2.64-4.255 5.14v4.474l-1.7 2.44h14.47l-1.702-2.44v-4.474c.024-4.076-3.616-5.09-4.255-5.14z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-watch:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=watch\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cg id=%22Page-1%22 fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg id=%22watchstar%22 fill=%22%2354595d%22%3E%3Cpath d=%22M8.91 9H1l6.007 5.86L5 23l7-4.319L19 23l-1.995-8.14L23 9h-7.909l-3.09-8-3.09 8zm.054 5.188L5.312 11h4.818L12 5.747 13.881 11h4.82l-3.653 3.2 1.099 4.956L12 16.516l-4.136 2.627 1.1-4.955z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-watched:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=watched\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%2300af89%22 d=%22M8.91 9H1l6.007 5.86L5 23l7-4.319L19 23l-1.995-8.14L23 9h-7.909l-3.09-8z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-search-clear:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=search-clear\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2218%22 height=%2218%22 viewBox=%220 0 18 18%22%3E%3Ctitle%3Eclear-field%3C/title%3E%3Cpath fill=%22%23a2a9b1%22 fill-rule=%22evenodd%22 d=%22M9 0C4.05 0 0 4.05 0 9s4.05 9 9 9 9-4.05 9-9-4.05-9-9-9zm4.5 12.375L12.375 13.5 9 10.125 5.625 13.5 4.5 12.375 7.875 9 4.5 5.625 5.625 4.5 9 7.875 12.375 4.5 13.5 5.625 10.125 9l3.375 3.375z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-search-content:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=search-content\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%2372777d%22 d=%22M10.55 2.06c2.287 0 4.43.88 6.04 2.49 3 3 3.37 7.654.88 11.083l-.143.204 4.285 4.285c.204.205.327.49.327.776A1.115 1.115 0 0 1 20.834 22c-.286 0-.572-.122-.776-.327l-4.245-4.244-.04-.044-.205.143a8.53 8.53 0 0 1-5.02 1.632 8.49 8.49 0 0 1-6.04-2.51A8.49 8.49 0 0 1 2 10.612 8.46 8.46 0 0 1 4.51 4.57a8.49 8.49 0 0 1 6.04-2.51zm5.083 13.613c2.796-2.795 2.796-7.346 0-10.142-1.368-1.344-3.164-2.1-5.082-2.1a7.117 7.117 0 0 0-5.06 2.1 7.236 7.236 0 0 0-2.1 5.08 7.13 7.13 0 0 0 2.08 5.064c1.37 1.347 3.165 2.103 5.083 2.103a7.164 7.164 0 0 0 5.083-2.103zm-.98-5.49c.265 0 .49.205.49.49 0 .266-.225.49-.49.49H6.776a.497.497 0 0 1-.49-.49c0-.265.224-.49.49-.49h7.877zm-7.837-1.49a.497.497 0 0 1-.49-.49c0-.264.225-.49.49-.49h7.878c.265 0 .49.226.49.49s-.225.49-.49.49H6.816zm4.613 3.94c.262 0 .49.224.49.49a.5.5 0 0 1-.49.49H6.813a.497.497 0 0 1-.49-.49c0-.266.225-.49.49-.49h4.613z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-amc-outreach:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=amc-outreach\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22210%22 height=%22229%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cpath d=%22M0 0h210v229H0z%22/%3E%3Cpath fill=%22%2336C%22 fill-rule=%22nonzero%22 d=%22M8.409 12.552l98.03 181.322a37.5 37.5 0 0 0 25.868 18.983l62.97 12.177a9.417 9.417 0 0 0 9.953-13.94l-96.843-168.46a47.556 47.556 0 0 0-27.64-21.873L17.148 1.798a7.5 7.5 0 0 0-8.74 10.754z%22/%3E%3Cpath stroke=%22%23454545%22 stroke-width=%222.825%22 d=%22M3.984 14.998l94.753 175.259a47.085 47.085 0 0 0 32.48 23.836l58.516 11.315a9.417 9.417 0 0 0 9.952-13.94l-96.842-168.46a47.556 47.556 0 0 0-27.64-21.872L13.861 2.845a8.475 8.475 0 0 0-9.878 12.153z%22/%3E%3Cpath stroke=%22%23EAECF0%22 stroke-linecap=%22round%22 stroke-width=%222.25%22 d=%22M148.622 201.53l19.341 3.798%22/%3E%3Cpath fill=%22%23EAF3FF%22 d=%22M20.5 17.5l93 165 77.08 17L98.67 39.897z%22/%3E%3Cg fill-rule=%22nonzero%22%3E%3Cpath fill=%22%23FC3%22 d=%22M155.898 147.714l14.392-38.825 38.241-14.612-38.241-14.612-14.392-38.826-14.392 38.826-38.241 14.612 38.241 14.612z%22/%3E%3Cpath stroke=%22%23454545%22 stroke-width=%222.825%22 d=%22M151.485 142.248l12.661-33.273 33.642-12.521-33.642-12.522-12.661-33.273-12.661 33.273-33.642 12.522 33.642 12.521z%22/%3E%3Cpath fill=%22%23FC3%22 d=%22M90.696 90.348l7.71-20.435 20.486-7.69-20.486-7.691-7.71-20.434-7.71 20.434L62.5 62.223l20.486 7.69zm18.798 69.375l7.71-20.435 20.486-7.69-20.486-7.691-7.71-20.434-7.71 20.434-20.487 7.691 20.487 7.69z%22/%3E%3Cpath stroke=%22%23454545%22 stroke-width=%222.825%22 d=%22M92.834 90.348l6.753-17.746 17.942-6.678-17.942-6.679L92.834 41.5l-6.752 17.745-17.943 6.679 17.943 6.678zm18.521 61.059l5.065-13.309 13.457-5.009-13.457-5.009-5.065-13.309-5.064 13.309-13.457 5.009 13.457 5.009z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}"
+        ".mw-ui-icon-mf-citation:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=citation\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ereference%3C/title%3E%3Cg fill=%22%2354595d%22%3E%3Cpath d=%22M15 10l-2.78-2.78L9.44 10V1H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-citation-invert:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=citation\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ereference%3C/title%3E%3Cg fill=%22%23fff%22%3E%3Cpath d=%22M15 10l-2.78-2.78L9.44 10V1H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-error:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=error\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cg fill=%22%2354595d%22%3E%3Cpath id=%22Bell%22 fill=%22%23d33%22 fill-rule=%22evenodd%22 d=%22M11.643 22.364c1.234 0 2.235-.956 2.235-2.136h-4.47c0 1.18 1 2.136 2.234 2.136zm7.25-12.284v3.998l1.77 3.603v1.1H2.623v-1.1l1.77-3.602V10.08c0-2.894 1.822-5.41 4.475-6.47.26-1.283 1.415-2.227 2.773-2.227s2.51.944 2.776 2.227c2.653 1.06 4.477 3.576 4.477 6.47zM12.92 4.974h-2.554c-2.438.553-4.255 2.64-4.255 5.14v4.474l-1.7 2.44h14.47l-1.702-2.44v-4.474c.024-4.076-3.616-5.09-4.255-5.14z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-watch:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=watch\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cg fill=%22%2354595d%22%3E%3Cg id=%22Page-1%22 fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg id=%22watchstar%22 fill=%22%2354595d%22%3E%3Cpath d=%22M8.91 9H1l6.007 5.86L5 23l7-4.319L19 23l-1.995-8.14L23 9h-7.909l-3.09-8-3.09 8zm.054 5.188L5.312 11h4.818L12 5.747 13.881 11h4.82l-3.653 3.2 1.099 4.956L12 16.516l-4.136 2.627 1.1-4.955z%22/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-watched:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=watched\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cg fill=%22%2354595d%22%3E%3Cpath fill=%22%2300af89%22 d=%22M8.91 9H1l6.007 5.86L5 23l7-4.319L19 23l-1.995-8.14L23 9h-7.909l-3.09-8z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-search-clear:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=search-clear\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2218%22 height=%2218%22 viewBox=%220 0 18 18%22%3E%3Ctitle%3Eclear-field%3C/title%3E%3Cg fill=%22%2354595d%22%3E%3Cpath fill=%22%23a2a9b1%22 fill-rule=%22evenodd%22 d=%22M9 0C4.05 0 0 4.05 0 9s4.05 9 9 9 9-4.05 9-9-4.05-9-9-9zm4.5 12.375L12.375 13.5 9 10.125 5.625 13.5 4.5 12.375 7.875 9 4.5 5.625 5.625 4.5 9 7.875 12.375 4.5 13.5 5.625 10.125 9l3.375 3.375z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-search-content:before{background-image:url(/w/load.php?modules=mobile.startup.images\u0026image=search-content\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3EsearchPage%3C/title%3E%3Cg fill=%22%2354595d%22%3E%3Cpath d=%22M10 5v1H5V5h5zm0 2v1H5V7h5zM8 9v1H5V9h3zm-.5-7C4.46 2 2 4.46 2 7.5S4.46 13 7.5 13 13 10.54 13 7.5 10.54 2 7.5 2zm0-2C11.64 0 15 3.36 15 7.5c0 1.71-.57 3.29-1.54 4.55l6.49 6.49-1.41 1.41-6.49-6.49C10.79 14.43 9.21 15 7.5 15 3.36 15 0 11.64 0 7.5S3.36 0 7.5 0z%22/%3E%3C/g%3E%3C/svg%3E\")}"
     ]
 });
-mw.loader.implement("mobile.startup.images.variants@06ats9l", null, {
-    "css": [
-        ".mw-ui-icon-mf-alert:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=alert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-alert-gray:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=alert\u0026variant=gray\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23a2a9b1%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-alert-invert:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=alert\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23fff%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-arrow:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=arrow\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Cpath d=%22M19 6.25l-1.5-1.5-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-arrow-gray:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=arrow\u0026variant=gray\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Cg fill=%22%23a2a9b1%22%3E%3Cpath d=%22M19 6.25l-1.5-1.5-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-arrow-invert:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=arrow\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Cg fill=%22%23fff%22%3E%3Cpath d=%22M19 6.25l-1.5-1.5-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-back:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=back\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%2354595d%22 d=%22M24 10.667H5.107l4.78-4.78L8 4l-8 8 8 8 1.887-1.887-4.78-4.78H24z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-back-gray:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=back\u0026variant=gray\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cg fill=%22%23a2a9b1%22%3E%3Cpath fill=%22%2354595d%22 d=%22M24 10.667H5.107l4.78-4.78L8 4l-8 8 8 8 1.887-1.887-4.78-4.78H24z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-back-invert:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=back\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cg fill=%22%23fff%22%3E%3Cpath fill=%22%2354595d%22 d=%22M24 10.667H5.107l4.78-4.78L8 4l-8 8 8 8 1.887-1.887-4.78-4.78H24z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-overlay-close:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=overlay-close\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Ctitle%3Eclose%3C/title%3E%3Cpath fill=%22%2354595d%22 fill-rule=%22evenodd%22 d=%22M19.75 5.592L18.158 4l-6.283 6.283L5.592 4 4 5.592l6.283 6.283L4 18.158l1.592 1.592 6.283-6.283 6.283 6.283 1.592-1.592-6.283-6.283z%22/%3E%3C/svg%3E\")}.mw-ui-icon-mf-overlay-close-gray:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=overlay-close\u0026variant=gray\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Ctitle%3Eclose%3C/title%3E%3Cg fill=%22%23a2a9b1%22%3E%3Cpath fill=%22%2354595d%22 fill-rule=%22evenodd%22 d=%22M19.75 5.592L18.158 4l-6.283 6.283L5.592 4 4 5.592l6.283 6.283L4 18.158l1.592 1.592 6.283-6.283 6.283 6.283 1.592-1.592-6.283-6.283z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-mf-overlay-close-invert:before{background-image:url(/w/load.php?modules=mobile.startup.images.variants\u0026image=overlay-close\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Ctitle%3Eclose%3C/title%3E%3Cg fill=%22%23fff%22%3E%3Cpath fill=%22%2354595d%22 fill-rule=%22evenodd%22 d=%22M19.75 5.592L18.158 4l-6.283 6.283L5.592 4 4 5.592l6.283 6.283L4 18.158l1.592 1.592 6.283-6.283 6.283 6.283 1.592-1.592-6.283-6.283z%22/%3E%3C/g%3E%3C/svg%3E\")}"
-    ]
-});
-mw.loader.implement("mw.externalguidance.init@1fgk895", function($, jQuery, require, module) {
+mw.loader.implement("mw.externalguidance.init@1fgk8", function($, jQuery, require, module) {
     (function() {
         var context, originalUserLang = mw.config.get('wgUserLanguage');
 
@@ -19820,36 +20494,36 @@ mw.loader.implement("mw.externalguidance.init@1fgk895", function($, jQuery, requ
         }
     }());
 });
-mw.loader.implement("skins.minerva.icons.images.scripts@03m1464");
-mw.loader.implement("skins.minerva.icons.images.scripts.misc@1vq7puh", null, {
-    "css": [".mw-ui-icon-minerva-download:before{background-image:url(/w/load.php?modules=skins.minerva.icons.images.scripts.misc\u0026image=download\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%2354595d%22 fill-rule=%22evenodd%22 d=%22M19.778 14.222H22v5.556A2.223 2.223 0 0 1 19.778 22H4.222A2.223 2.223 0 0 1 2 19.778v-5.556h2V20h16v-5.436l-.222-.342zM12 18l-5.611-7h11.11L12 18zm1-16v9h-2V2h2z%22/%3E%3C/svg%3E\")}"]
+mw.loader.implement("skins.minerva.icons.images.scripts@3m146");
+mw.loader.implement("skins.minerva.icons.images.scripts.misc@17ecc", null, {
+    "css": [".mw-ui-icon-minerva-download:before{background-image:url(/w/load.php?modules=skins.minerva.icons.images.scripts.misc\u0026image=download\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cpath fill=%22%2354595d%22 fill-rule=%22evenodd%22 d=%22M19.778 14.222H22v5.556A2.223 2.223 0 0 1 19.778 22H4.222A2.223 2.223 0 0 1 2 19.778v-5.556h2V20h16v-5.436l-.222-.342zM12 18l-5.611-7h11.11L12 18zm1-16v9h-2V2h2z%22/%3E%3C/svg%3E\")}"]
 });
-mw.loader.implement("skins.minerva.icons.page.issues.default.color@19pxgso", null, {
+mw.loader.implement("skins.minerva.icons.page.issues.default.color@1b22b", null, {
     "css": [
-        ".mw-ui-icon-minerva-issue-generic-defaultColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%2354595d%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-generic-lowColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026variant=lowColor\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23fc3%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-generic-mediumColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026variant=mediumColor\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23ff5d01%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-generic-highColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026variant=highColor\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23d33%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}"
+        ".mw-ui-icon-minerva-issue-generic-defaultColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%2354595d%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-generic-lowColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026variant=lowColor\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23fc3%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-generic-mediumColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026variant=mediumColor\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23ff5d01%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-generic-highColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.default.color\u0026image=issue-generic\u0026variant=highColor\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Ealert%3C/title%3E%3Cg fill=%22%23d33%22%3E%3Cpath d=%22M19.64 16.36L11.53 2.3A1.85 1.85 0 0 0 10 1.21 1.85 1.85 0 0 0 8.48 2.3L.36 16.36C-.48 17.81.21 19 1.88 19h16.24c1.67 0 2.36-1.19 1.52-2.64zM11 16H9v-2h2zm0-4H9V6h2z%22/%3E%3C/g%3E%3C/svg%3E\")}"
     ]
 });
-mw.loader.implement("skins.minerva.icons.page.issues.medium.color@1squc26", null, {
+mw.loader.implement("skins.minerva.icons.page.issues.medium.color@y20cr", null, {
     "css": [
-        ".mw-ui-icon-minerva-issue-severity-medium-mediumColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.medium.color\u0026image=issue-severity-medium\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Enotice%3C/title%3E%3Cg fill=%22%23ff5d01%22%3E%3Cpath d=%22M10 0a10 10 0 1 0 10 10A10 10 0 0 0 10 0zm1 16H9v-2h2zm0-4H9V4h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-type-point-of-view-mediumColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.medium.color\u0026image=issue-type-point-of-view\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 id=%22Layer_1%22 viewBox=%220 0 20 20%22%3E%3Cg fill=%22%23ff5d01%22%3E%3Cg%3E%3Cpath d=%22M6 8l2-3 2-3H2l2 3z%22/%3E%3Cpath d=%22M14 12l-2 3-2 3h8l-2-3z%22/%3E%3Cpath transform=%22rotate%28-22.5 10 10%29%22 d=%22M1.5 9h17v2h-17z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}"
+        ".mw-ui-icon-minerva-issue-severity-medium-mediumColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.medium.color\u0026image=issue-severity-medium\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Enotice%3C/title%3E%3Cg fill=%22%23ff5d01%22%3E%3Cpath d=%22M10 0a10 10 0 1 0 10 10A10 10 0 0 0 10 0zm1 16H9v-2h2zm0-4H9V4h2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-type-point-of-view-mediumColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.medium.color\u0026image=issue-type-point-of-view\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 id=%22Layer_1%22 viewBox=%220 0 20 20%22%3E%3Cg fill=%22%23ff5d01%22%3E%3Cg%3E%3Cpath d=%22M6 8l2-3 2-3H2l2 3z%22/%3E%3Cpath d=%22M14 12l-2 3-2 3h8l-2-3z%22/%3E%3Cpath transform=%22rotate%28-22.5 10 10%29%22 d=%22M1.5 9h17v2h-17z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}"
     ]
 });
-mw.loader.implement("skins.minerva.icons.page.issues.uncolored@0zfg068", null, {
+mw.loader.implement("skins.minerva.icons.page.issues.uncolored@mh324", null, {
     "css": [
-        ".mw-ui-icon-minerva-issue-severity-low-lowColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.uncolored\u0026image=issue-severity-low-lowColor\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg id=%22Layer_1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 viewBox=%220 0 20 20%22%3E%3Cstyle%3E.st0%7Bclip-path:url%28%23SVGID_2_%29%3Bfill:%23f5a623%7D.st1%7Bclip-path:url%28%23SVGID_4_%29%3Bfill:%23774b20%7D%3C/style%3E%3Cg%3E%3Cg%3E%3Cdefs%3E%3Cpath id=%22SVGID_1_%22 d=%22M17.9 11.9c-1.4-.3-3.4-2.8-4.8-4.6l-8.8 6.2 2.3 3.3c.8 1.2 2.3 1.8 4 1.7-.8-.9-1.5-1.9-1.6-2-.1-.2 0-.4.1-.5.2-.1.4-.1.5.1.3.5 1.1 1.5 1.8 2.3.8-.2 1.7-.6 2.6-1.1-1.3-.8-2.2-2.4-2.2-2.4-.1-.2 0-.4.1-.5.2-.1.4 0 .5.1 0 0 1 1.7 2.3 2.3.9-.7 1.6-1.3 2.1-1.9-2.1-.4-3.1-1.9-3.2-1.9-.1-.2-.1-.4.1-.5.2-.1.4-.1.5.1a4.907 4.907 0 0 0 3.1 1.7c.6-.9.8-1.6.8-2 .1-.2 0-.3-.2-.4z%22/%3E%3C/defs%3E%3CclipPath id=%22SVGID_2_%22%3E%3Cuse xlink:href=%22%23SVGID_1_%22 overflow=%22visible%22/%3E%3C/clipPath%3E%3Cpath class=%22st0%22 d=%22M-.7 2.3h23.9v21.2H-.7z%22/%3E%3C/g%3E%3Cg%3E%3Cdefs%3E%3Cpath id=%22SVGID_3_%22 d=%22M11.6 5.2c-.3-.4-.9-.5-1.3-.2L7.9 6.6 4.5 1.8c-.2-.3-.6-.4-.9-.2L2.1 2.7c-.3.2-.3.6-.2.8l3.4 4.8L3 10c-.4.3-.5.9-.2 1.3L4 13l8.8-6.1c-.8-1-1.2-1.7-1.2-1.7z%22/%3E%3C/defs%3E%3CclipPath id=%22SVGID_4_%22%3E%3Cuse xlink:href=%22%23SVGID_3_%22 overflow=%22visible%22/%3E%3C/clipPath%3E%3Cpath class=%22st1%22 d=%22M-3.2-3.5h20.9V18H-3.2z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-type-move-defaultColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.uncolored\u0026image=issue-type-move-defaultColor\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg id=%22Layer_1%22 xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22%3E%3Cstyle%3E.st0%7Bfill:%2336c%7D.st1%7Bfill:%23d33%7D%3C/style%3E%3Cg%3E%3Cpath class=%22st0%22 d=%22M6 8.7V12H0v4h6v3l3-2.6 3-2.6-3-2.5z%22/%3E%3Cpath class=%22st1%22 d=%22M14 4V.7l-3 2.6-3 2.5 3 2.6 3 2.6V8h6V4z%22/%3E%3C/g%3E%3C/svg%3E\")}"
+        ".mw-ui-icon-minerva-issue-severity-low-lowColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.uncolored\u0026image=issue-severity-low-lowColor\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg id=%22Layer_1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 viewBox=%220 0 20 20%22%3E%3Cstyle%3E.st0%7Bclip-path:url%28%23SVGID_2_%29%3Bfill:%23f5a623%7D.st1%7Bclip-path:url%28%23SVGID_4_%29%3Bfill:%23774b20%7D%3C/style%3E%3Cg%3E%3Cg%3E%3Cdefs%3E%3Cpath id=%22SVGID_1_%22 d=%22M17.9 11.9c-1.4-.3-3.4-2.8-4.8-4.6l-8.8 6.2 2.3 3.3c.8 1.2 2.3 1.8 4 1.7-.8-.9-1.5-1.9-1.6-2-.1-.2 0-.4.1-.5.2-.1.4-.1.5.1.3.5 1.1 1.5 1.8 2.3.8-.2 1.7-.6 2.6-1.1-1.3-.8-2.2-2.4-2.2-2.4-.1-.2 0-.4.1-.5.2-.1.4 0 .5.1 0 0 1 1.7 2.3 2.3.9-.7 1.6-1.3 2.1-1.9-2.1-.4-3.1-1.9-3.2-1.9-.1-.2-.1-.4.1-.5.2-.1.4-.1.5.1a4.907 4.907 0 0 0 3.1 1.7c.6-.9.8-1.6.8-2 .1-.2 0-.3-.2-.4z%22/%3E%3C/defs%3E%3CclipPath id=%22SVGID_2_%22%3E%3Cuse xlink:href=%22%23SVGID_1_%22 overflow=%22visible%22/%3E%3C/clipPath%3E%3Cpath class=%22st0%22 d=%22M-.7 2.3h23.9v21.2H-.7z%22/%3E%3C/g%3E%3Cg%3E%3Cdefs%3E%3Cpath id=%22SVGID_3_%22 d=%22M11.6 5.2c-.3-.4-.9-.5-1.3-.2L7.9 6.6 4.5 1.8c-.2-.3-.6-.4-.9-.2L2.1 2.7c-.3.2-.3.6-.2.8l3.4 4.8L3 10c-.4.3-.5.9-.2 1.3L4 13l8.8-6.1c-.8-1-1.2-1.7-1.2-1.7z%22/%3E%3C/defs%3E%3CclipPath id=%22SVGID_4_%22%3E%3Cuse xlink:href=%22%23SVGID_3_%22 overflow=%22visible%22/%3E%3C/clipPath%3E%3Cpath class=%22st1%22 d=%22M-3.2-3.5h20.9V18H-3.2z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-issue-type-move-defaultColor:before{background-image:url(/w/load.php?modules=skins.minerva.icons.page.issues.uncolored\u0026image=issue-type-move-defaultColor\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg id=%22Layer_1%22 xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22%3E%3Cstyle%3E.st0%7Bfill:%2336c%7D.st1%7Bfill:%23d33%7D%3C/style%3E%3Cg%3E%3Cpath class=%22st0%22 d=%22M6 8.7V12H0v4h6v3l3-2.6 3-2.6-3-2.5z%22/%3E%3Cpath class=%22st1%22 d=%22M14 4V.7l-3 2.6-3 2.5 3 2.6 3 2.6V8h6V4z%22/%3E%3C/g%3E%3C/svg%3E\")}"
     ]
 });
-mw.loader.implement("skins.minerva.mainMenu.icons@1e70voy", null, {
+mw.loader.implement("skins.minerva.mainMenu.icons@17yah", null, {
     "css": [
-        ".mw-ui-icon-minerva-contributions:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=contributions\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Cg fill=%22%234A4F53%22%3E%3Cg%3E%3Cpath d=%22M6 15h3v2H6z%22/%3E%3Cpath d=%22M6 9h5v2H6z%22/%3E%3Cpath d=%22M6 3h11v2H6z%22/%3E%3Ccircle cx=%222%22 cy=%224%22 r=%222%22/%3E%3Ccircle cx=%222%22 cy=%2210%22 r=%222%22/%3E%3Ccircle cx=%222%22 cy=%2216%22 r=%222%22/%3E%3Cpath d=%22M15.5 13.556c-3.33 0-4.5 1.666-4.5 2.777V18h9v-1.667c0-1.11-1.17-2.777-4.5-2.777z%22/%3E%3Ccircle cx=%2215.444%22 cy=%2210.5%22 r=%222.5%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-login:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=login\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3ElogIn-ltr%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M1 11v6c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v6h8V5l4.75 5L9 15v-4H1z%22 fill-rule=%22evenodd%22 clip-rule=%22evenodd%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-home:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=home\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Elog out%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M10 1L0 10h3v9h4v-4.6c0-1.47 1.31-2.66 3-2.66s3 1.19 3 2.66V19h4v-9h3L10 1z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-logout:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=logout\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Elog out%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M3 3h8V1H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H3z%22/%3E%3Cpath d=%22M13 5v4H5v2h8v4l6-5z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-nearby:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=nearby\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Emap pin%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M10 0a7.65 7.65 0 0 0-8 8c0 2.52 2 5 3 6s5 6 5 6 4-5 5-6 3-3.48 3-6a7.65 7.65 0 0 0-8-8zm0 11.25A3.25 3.25 0 1 1 13.25 8 3.25 3.25 0 0 1 10 11.25z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-random:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=random\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Edie%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M3 1a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm2 16a2 2 0 1 1 2-2 2 2 0 0 1-2 2zM5 7a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm5 5a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm5 5a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm0-10a2 2 0 1 1 2-2 2 2 0 0 1-2 2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-settings:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=settings\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Esettings%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cg xmlns:xlink=%22http://www.w3.org/1999/xlink%22 transform=%22translate%2810 10%29%22%3E%3Cpath id=%22a%22 d=%22M1.5-10h-3l-1 6.5h5m0 7h-5l1 6.5h3%22/%3E%3Cuse transform=%22rotate%2845%29%22 xlink:href=%22%23a%22/%3E%3Cuse transform=%22rotate%2890%29%22 xlink:href=%22%23a%22/%3E%3Cuse transform=%22rotate%28135%29%22 xlink:href=%22%23a%22/%3E%3C/g%3E%3Cpath d=%22M10 2.5a7.5 7.5 0 0 0 0 15 7.5 7.5 0 0 0 0-15v4a3.5 3.5 0 0 1 0 7 3.5 3.5 0 0 1 0-7%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-watchlist:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=watchlist\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Eun-star%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M20 7h-7L10 .5 7 7H0l5.46 5.47-1.64 7 6.18-3.7 6.18 3.73-1.63-7z%22/%3E%3C/g%3E%3C/svg%3E\")}"
+        ".mw-ui-icon-minerva-contributions:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=contributions\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Cg fill=%22%234A4F53%22%3E%3Cg%3E%3Cpath d=%22M6 15h3v2H6z%22/%3E%3Cpath d=%22M6 9h5v2H6z%22/%3E%3Cpath d=%22M6 3h11v2H6z%22/%3E%3Ccircle cx=%222%22 cy=%224%22 r=%222%22/%3E%3Ccircle cx=%222%22 cy=%2210%22 r=%222%22/%3E%3Ccircle cx=%222%22 cy=%2216%22 r=%222%22/%3E%3Cpath d=%22M15.5 13.556c-3.33 0-4.5 1.666-4.5 2.777V18h9v-1.667c0-1.11-1.17-2.777-4.5-2.777z%22/%3E%3Ccircle cx=%2215.444%22 cy=%2210.5%22 r=%222.5%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-login:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=login\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3ElogIn-ltr%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M1 11v6c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v6h8V5l4.75 5L9 15v-4H1z%22 fill-rule=%22evenodd%22 clip-rule=%22evenodd%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-home:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=home\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Elog out%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M10 1L0 10h3v9h4v-4.6c0-1.47 1.31-2.66 3-2.66s3 1.19 3 2.66V19h4v-9h3L10 1z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-logout:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=logout\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Elog out%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M3 3h8V1H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H3z%22/%3E%3Cpath d=%22M13 5v4H5v2h8v4l6-5z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-nearby:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=nearby\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Emap pin%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M10 0a7.65 7.65 0 0 0-8 8c0 2.52 2 5 3 6s5 6 5 6 4-5 5-6 3-3.48 3-6a7.65 7.65 0 0 0-8-8zm0 11.25A3.25 3.25 0 1 1 13.25 8 3.25 3.25 0 0 1 10 11.25z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-random:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=random\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Edie%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M3 1a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm2 16a2 2 0 1 1 2-2 2 2 0 0 1-2 2zM5 7a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm5 5a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm5 5a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm0-10a2 2 0 1 1 2-2 2 2 0 0 1-2 2z%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-settings:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=settings\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Esettings%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cg xmlns:xlink=%22http://www.w3.org/1999/xlink%22 transform=%22translate%2810 10%29%22%3E%3Cpath id=%22a%22 d=%22M1.5-10h-3l-1 6.5h5m0 7h-5l1 6.5h3%22/%3E%3Cuse transform=%22rotate%2845%29%22 xlink:href=%22%23a%22/%3E%3Cuse transform=%22rotate%2890%29%22 xlink:href=%22%23a%22/%3E%3Cuse transform=%22rotate%28135%29%22 xlink:href=%22%23a%22/%3E%3C/g%3E%3Cpath d=%22M10 2.5a7.5 7.5 0 0 0 0 15 7.5 7.5 0 0 0 0-15v4a3.5 3.5 0 0 1 0 7 3.5 3.5 0 0 1 0-7%22/%3E%3C/g%3E%3C/svg%3E\")}.mw-ui-icon-minerva-watchlist:before{background-image:url(/w/load.php?modules=skins.minerva.mainMenu.icons\u0026image=watchlist\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Eun-star%3C/title%3E%3Cg fill=%22%234A4F53%22%3E%3Cpath d=%22M20 7h-7L10 .5 7 7H0l5.46 5.47-1.64 7 6.18-3.7 6.18 3.73-1.63-7z%22/%3E%3C/g%3E%3C/svg%3E\")}"
     ]
 });
-mw.loader.implement("skins.minerva.mainMenu.styles@1co7oxq", null, {
+mw.loader.implement("skins.minerva.mainMenu.styles@1bzp8", null, {
     "css": [
-        "#mw-mf-page-left{position:fixed;top:0;left:0;bottom:0;min-width:275px;max-width:80%;z-index:2;overflow-y:auto;background-color:#eaecf0;-webkit-transform:translate(-100%,0);-moz-transform:translate(-100%,0);transform:translate(-100%,0)}@media screen and (min-width:720px){#mw-mf-page-left{min-width:320px}}#mw-mf-page-left ul{padding-bottom:22px}.primary-navigation-enabled{overflow:hidden;touch-action:none}.animations #mw-mf-page-left{-webkit-transition:transform 0.25s ease-in-out;-moz-transition:transform 0.25s ease-in-out;transition:transform 0.25s ease-in-out}.animations.primary-navigation-enabled #mw-mf-page-left{-webkit-transform:translate(0,0);-moz-transform:translate(0,0);transform:translate(0,0)}.animations.primary-navigation-enabled .transparent-shield{visibility:visible;opacity:0.5}.navigation-full-screen #mw-mf-page-left{max-width:none;transform:none}       #mw-mf-page-left .secondary-action{border:0;font-size:16px;position:absolute;right:0;top:0;bottom:0;padding-right:0;border-left:1px solid #a2a9b1}#mw-mf-page-left .primary-action{margin-right:3.5em}#mw-mf-page-left ul:first-child li:first-child{border-top:0}#mw-mf-page-left ul li{background-color:#ffffff;position:relative;border-top:1px solid #eaecf0;margin-top:-1px;font-size:0.875em}#mw-mf-page-left ul li:first-child{border-top:0}#mw-mf-page-left ul li a{color:#54595d;display:block;padding:12px 10px 12px 15px;max-width:100%;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}#mw-mf-page-left ul li a:hover{box-shadow:inset 4px 0 0 0 #3366cc;text-decoration:none}#mw-mf-page-left ul li a:visited,#mw-mf-page-left ul li a:active{color:#54595d}#mw-mf-page-left ul li a.mw-ui-icon{font-weight:bold;line-height:1.857}#mw-mf-page-left ul li a.mw-ui-icon:before{font-size:16px}      #mw-mf-page-left ul.hlist li{background-color:transparent;border:0;margin:0;font-size:0.75em}#mw-mf-page-left ul.hlist li:after{content:none}#mw-mf-page-left ul.hlist li a{color:#3366cc;padding:0.7em 12px}#mw-mf-page-left ul.hlist li a:hover{background-color:transparent;box-shadow:none}         .notifications-overlay{visibility:visible}.notifications-overlay.navigation-drawer{display:block;width:auto;right:0;box-shadow:-5px 0 0 0 rgba(0,0,0,0.3)}@media all and (min-width:720px){.notifications-overlay.navigation-drawer{left:40%}.notifications-overlay.navigation-drawer .overlay-header{margin:0;width:100%;max-width:none}.notifications-overlay.navigation-drawer .overlay-header .cancel{left:0}}.animations .notifications-overlay.navigation-drawer{-webkit-transform:translate(100%,0);-moz-transform:translate(100%,0);transform:translate(100%,0);-webkit-transition:transform 0.25s ease-in-out;-moz-transition:transform 0.25s ease-in-out;transition:transform 0.25s ease-in-out}.animations .notifications-overlay.navigation-drawer.visible{-webkit-transform:translate(0,0);-moz-transform:translate(0,0);transform:translate(0,0)}.secondary-navigation-enabled .transparent-shield{visibility:visible;opacity:0.5}"
+        "#mw-mf-page-left{position:fixed;top:0;left:0;bottom:0;min-width:275px;max-width:80%;z-index:2;overflow-y:auto;background-color:#eaecf0;-webkit-transform:translate(-100%,0);-moz-transform:translate(-100%,0);transform:translate(-100%,0)}@media screen and (min-width:720px){#mw-mf-page-left{min-width:320px}}#mw-mf-page-left ul{padding-bottom:22px}.primary-navigation-enabled{overflow:hidden;touch-action:none}.animations #mw-mf-page-left{-webkit-transition:transform 0.25s ease-in-out;-moz-transition:transform 0.25s ease-in-out;transition:transform 0.25s ease-in-out}.animations.primary-navigation-enabled #mw-mf-page-left{-webkit-transform:translate(0,0);-moz-transform:translate(0,0);transform:translate(0,0)}.animations.primary-navigation-enabled .transparent-shield{visibility:visible;opacity:0.5}.navigation-full-screen #mw-mf-page-left{max-width:none;-webkit-transform:none;-moz-transform:none;transform:none}       #mw-mf-page-left .secondary-action{border:0;font-size:16px;position:absolute;right:0;top:0;bottom:0;padding-right:0;border-left:1px solid #a2a9b1}#mw-mf-page-left .primary-action{margin-right:3.5em}#mw-mf-page-left ul:first-child li:first-child{border-top:0}#mw-mf-page-left ul li{background-color:#ffffff;position:relative;border-top:1px solid #eaecf0;margin-top:-1px;font-size:0.875em}#mw-mf-page-left ul li:first-child{border-top:0}#mw-mf-page-left ul li a{color:#54595d;display:block;padding:12px 10px 12px 15px;max-width:100%;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}#mw-mf-page-left ul li a:hover{box-shadow:inset 4px 0 0 0 #3366cc;text-decoration:none}#mw-mf-page-left ul li a:visited,#mw-mf-page-left ul li a:active{color:#54595d}#mw-mf-page-left ul li a.mw-ui-icon{font-weight:bold;line-height:1.857}#mw-mf-page-left ul li a.mw-ui-icon:before{font-size:16px}      #mw-mf-page-left ul.hlist li{background-color:transparent;border:0;margin:0;font-size:0.75em}#mw-mf-page-left ul.hlist li:after{content:none}#mw-mf-page-left ul.hlist li a{color:#3366cc;padding:0.7em 12px}#mw-mf-page-left ul.hlist li a:hover{background-color:transparent;box-shadow:none}         .notifications-overlay{visibility:visible}.notifications-overlay.navigation-drawer{display:block;width:auto;right:0;box-shadow:-5px 0 0 0 rgba(0,0,0,0.3)}@media all and (min-width:720px){.notifications-overlay.navigation-drawer{left:40%}.notifications-overlay.navigation-drawer .overlay-header{margin:0;width:100%;max-width:none}.notifications-overlay.navigation-drawer .overlay-header .cancel{left:0}}.animations .notifications-overlay.navigation-drawer{-webkit-transform:translate(100%,0);-moz-transform:translate(100%,0);transform:translate(100%,0);-webkit-transition:transform 0.25s ease-in-out;-moz-transition:transform 0.25s ease-in-out;transition:transform 0.25s ease-in-out}.animations .notifications-overlay.navigation-drawer.visible{-webkit-transform:translate(0,0);-moz-transform:translate(0,0);transform:translate(0,0)}.secondary-navigation-enabled .transparent-shield{visibility:visible;opacity:0.5}"
     ]
 });
-mw.loader.implement("skins.minerva.options@1h07ipx", {
+mw.loader.implement("skins.minerva.options@1b4nx", {
     "main": "resources/skins.minerva.options/index.js",
     "files": {
         "resources/skins.minerva.options/index.js": function(require, module) {
@@ -19917,7 +20591,8 @@ mw.loader.implement("skins.minerva.options@1h07ipx", {
                     mobile = M.require('mobile.startup'),
                     loader = mobile.rlModuleLoader,
                     features = mw.config.get('wgMinervaFeatures', {}),
-                    overlayManager = require('skins.minerva.scripts').overlayManager,
+                    OverlayManager = mobile.OverlayManager,
+                    overlayManager = OverlayManager.getSingleton(),
                     eventBus = mobile.eventBusSingleton,
                     isAnon = mw.user.isAnon();
                 if (!features.categories) {
@@ -20027,14 +20702,14 @@ mw.loader.implement("skins.minerva.options@1h07ipx", {
     }
 }, {
     "css": [
-        ".backtotop{ visibility:hidden;opacity:0; position:fixed;width:2.5em;height:2.5em;border-radius:100%;box-shadow:0.1em 0.2em 0.3em #c8ccd1;bottom:20px;right:0;cursor:pointer;z-index:3;background-color:#3366cc; -webkit-transition:opacity 0.5s 0s;-moz-transition:opacity 0.5s 0s;transition:opacity 0.5s 0s}.backtotop.visible{opacity:0.8}.backtotop.visible:hover{opacity:1}.backtotop \u003E .arrow-up{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #fff;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}"
+        ".backtotop{ visibility:hidden;opacity:0; position:fixed;width:2.5em;height:2.5em;border-radius:100%;box-shadow:0.1em 0.2em 0.3em #c8ccd1;bottom:20px;right:0;cursor:pointer;z-index:3;background-color:#3366cc; -webkit-transition:opacity 0.5s 0s;-moz-transition:opacity 0.5s 0s;transition:opacity 0.5s 0s}.backtotop.visible{opacity:0.8}.backtotop.visible:hover{opacity:1}.backtotop \u003E .arrow-up{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #fff;position:absolute;top:50%;left:50%;-webkit-transform:translate(-50%,-50%);-moz-transform:translate(-50%,-50%);transform:translate(-50%,-50%)}"
     ]
 }, {
     "skin-minerva-share": "Share"
 }, {
     "BackToTopOverlay.mustache": "\u003Cdiv class=\"arrow-up\"\u003E\u003C/div\u003E\n"
 });
-mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
+mw.loader.implement("skins.minerva.scripts@gec0r", {
     "main": "resources/skins.minerva.scripts/init.js",
     "files": {
         "resources/skins.minerva.scripts/init.js": function(require, module) {
@@ -20042,8 +20717,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 var mobile = M.require('mobile.startup'),
                     PageGateway = mobile.PageGateway,
                     toast = mobile.toast,
+                    Icon = mobile.Icon,
                     time = mobile.time,
-                    toc = require('./toc.js'),
                     errorLogging = require('./errorLogging.js'),
                     notifications = require('./notifications.js'),
                     preInit = require('./preInit.js'),
@@ -20060,7 +20735,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     desktopMMV = mw.loader.getState('mmv.bootstrap'),
                     Button = mobile.Button,
                     Anchor = mobile.Anchor,
-                    overlayManager = require('./overlayManager.js'),
+                    overlayManager = mobile.OverlayManager.getSingleton(),
                     currentPage = mobile.currentPage(),
                     currentPageHTMLParser = mobile.currentPageHTMLParser(),
                     $redLinks = currentPageHTMLParser.getRedLinks(),
@@ -20136,7 +20811,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                             $bar.addClass('active');
                             $bar.find('.mw-ui-icon-minerva-clock').
                             addClass('mw-ui-icon-minerva-clock-invert');
-                            $bar.find('.mw-ui-icon-mf-arrow-gray').addClass('mw-ui-icon-mf-arrow-invert');
+                            $bar.find('.mw-ui-icon-mf-expand-gray').addClass('mw-ui-icon-mf-expand-invert');
                         }
                         msg = time.getLastModifiedMessage(ts, username, gender, historyUrl);
                         $lastModifiedLink.replaceWith(msg);
@@ -20207,7 +20882,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     });
                 }
                 $(function() {
-                    var $toc, toolbarElement = document.querySelector(Toolbar.selector),
+                    var toolbarElement = document.querySelector(Toolbar.selector),
                         userMenu = document.querySelector('.minerva-user-menu');
                     preInit();
                     references();
@@ -20232,16 +20907,19 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     if (!mw.user.isAnon() && mw.config.get('wgEchoMaxNotificationCount') !== undefined) {
                         notifications();
                     }
-                    $toc = $('#toc');
-                    if (mw.config.get('wgAction') === 'view' && $toc.length > 0) {
-                        toc(currentPage, $toc);
-                    }
                     mw.requestIdleCallback(errorLogging);
                     mw.log.deprecate(router, 'navigate', router.navigate, 'use navigateTo instead');
+                    new Icon({
+                        glyphPrefix: 'minerva',
+                        name: 'toc'
+                    }).$el.prependTo('.toctitle');
+                    new Icon({
+                        glyphPrefix: 'mf',
+                        name: 'expand',
+                        additionalClassNames: 'mw-ui-icon-mf-arrow',
+                        isSmall: !0
+                    }).$el.appendTo('.toctitle');
                 });
-                module.exports = {
-                    overlayManager: overlayManager
-                };
             }(mw.mobileFrontend));
         },
         "resources/skins.minerva.scripts/NotificationBadge.js": function(require, module) {
@@ -20261,7 +20939,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                         el = options.el;
                     if (el) {
                         $el = $(el);
-                        options.hasUnseenNotifications = $el.find('.notification-unseen').length > 0;
+                        options.
+                        hasUnseenNotifications = $el.find('.notification-unseen').length > 0;
                         options.hasNotifications = options.hasUnseenNotifications;
                         $notificationAnchor = $el.find('a');
                         options.title = $notificationAnchor.attr('title');
@@ -20294,12 +20973,12 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                         this.render();
                     },
                     markAsSeen: function() {
-                        this.options.hasUnseenNotifications = !1;
+                        this.options.
+                        hasUnseenNotifications = !1;
                         this.render();
                     }
                 });
-                module.exports =
-                    NotificationBadge;
+                module.exports = NotificationBadge;
             }(mw.mobileFrontend));
         },
         "resources/skins.minerva.scripts/notifications.js": function(require, module) {
@@ -20310,7 +20989,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     mobile = M.require('mobile.startup'),
                     util = mobile.util,
                     NotificationBadge = require('./NotificationBadge.js'),
-                    overlayManager = require('./overlayManager.js'),
+                    overlayManager = mobile.OverlayManager.getSingleton(),
                     initialized = !1;
 
                 function showNotificationOverlay() {
@@ -20332,10 +21011,10 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                             router.navigate('#/notifications');
                             ev.preventDefault();
                         },
-                        el: $('#user-notifications.user-button').parent()
+                        el: $(
+                            '#user-notifications.user-button').parent()
                     });
-                    overlayManager.add(
-                        /^\/notifications$/, showNotificationOverlay);
+                    overlayManager.add(/^\/notifications$/, showNotificationOverlay);
 
                     function addFilterButton() {
                         var filterStatusButton = new OO.ui.ButtonWidget({
@@ -20355,26 +21034,19 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                                 $notifReadState = $('.mw-echo-ui-notificationsInboxWidget-main-toolbar-readState'),
                                 NotificationsFilterOverlay = M.require('mobile.notifications.overlay/NotificationsFilterOverlay');
                             addFilterButton();
-                            overlayManager.add(/^\/notifications-filter$/,
-                                function() {
-                                    mainMenu.openNavigationDrawer('secondary');
-                                    return new NotificationsFilterOverlay({
-                                        $notifReadState: $notifReadState,
-                                        mainMenu: mainMenu,
-                                        $crossWikiUnreadFilter: $crossWikiUnreadFilter
-                                    });
+                            overlayManager.add(/^\/notifications-filter$/, function() {
+                                mainMenu.openNavigationDrawer('secondary');
+                                return new NotificationsFilterOverlay({
+                                    $notifReadState: $notifReadState,
+                                    mainMenu: mainMenu,
+                                    $crossWikiUnreadFilter: $crossWikiUnreadFilter
                                 });
+                            });
                         });
                         initialized = !0;
                     });
                 });
             };
-        },
-        "resources/skins.minerva.scripts/overlayManager.js": function(require, module) {
-            var mobile = mw.mobileFrontend.require('mobile.startup'),
-                OverlayManager = mobile.OverlayManager,
-                overlayManager = OverlayManager.getSingleton();
-            module.exports = overlayManager;
         },
         "resources/skins.minerva.scripts/menu/MainMenu.js": function(require, module) {
             (function(M) {
@@ -20439,7 +21111,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 return new MainMenu(options);
             }
             $(function() {
-                if (!$('#mw-mf-page-left').find('.menu').length) {
+                if (!$(
+                        '#mw-mf-page-left').find('.menu').length) {
                     mainMenu.registerClickEvents();
                     mainMenu.appendTo('#mw-mf-page-left');
                 }
@@ -20503,7 +21176,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 var M = mw.mobileFrontend,
                     mobile = M.require('mobile.startup'),
                     skin = mobile.Skin.getSingleton(),
-                    mainMenu = require('./menu.js');
+                    mainMenu = require(
+                        './menu.js');
 
                 function onSkinClick(ev) {
                     var $target = $(ev.target);
@@ -20533,8 +21207,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
         "resources/skins.minerva.scripts/downloadPageAction.js": function(require, module) {
             (function(M, track, msg) {
                 var MAX_PRINT_TIMEOUT = 3000,
-                    mobile = M.require(
-                        'mobile.startup'),
+                    mobile = M.require('mobile.startup'),
                     Icon = mobile.Icon,
                     icons = mobile.icons,
                     lazyImageLoader = mobile.lazyImages.lazyImageLoader,
@@ -20542,7 +21215,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     GLYPH = 'download';
 
                 function getAndroidVersion(userAgent) {
-                    var match = userAgent.toLowerCase().match(/android\s(\d\.]*)/);
+                    var match =
+                        userAgent.toLowerCase().match(/android\s(\d\.]*)/);
                     return match ? parseInt(match[1]) : !1;
                 }
 
@@ -20586,7 +21260,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                         track('minerva.downloadAsPDF', {
                             action: 'fetchImages'
                         });
-                        icon.$el.hide();
+                        icon.
+                        $el.hide();
                         spinner.$el.show();
                         icon.timeout = setTimeout(doPrint, MAX_PRINT_TIMEOUT);
                         lazyImageLoader.loadImages(lazyImageLoader.queryPlaceholders(document.getElementById('content'))).then(doPrintBeforeTimeout, doPrintBeforeTimeout);
@@ -20687,8 +21362,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 function parseType(box, severity) {
                     var identified, identifiedType;
                     identified = Object.keys(TYPE_REGEX).some(function(type) {
-                        var regex =
-                            TYPE_REGEX[type];
+                        var regex = TYPE_REGEX[type];
                         identifiedType = type;
                         return regex.test(box.className);
                     });
@@ -20699,7 +21373,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 }
 
                 function parseGroup(box) {
-                    return !!box.parentNode && GROUPED_PARENT_REGEX.test(box.parentNode.className);
+                    return !!box.parentNode && GROUPED_PARENT_REGEX.
+                    test(box.parentNode.className);
                 }
 
                 function iconName(box, severity) {
@@ -20732,8 +21407,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     $box.find(SELECTOR).each(function() {
                         var contents, $this = $(this);
                         $this.find('table, .noprint').remove();
-                        contents =
-                            $this.html();
+                        contents = $this.html();
                         if (contents) {
                             $('<p>').html(contents).appendTo($container);
                         }
@@ -20834,10 +21508,9 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
 
                 function IssueList(issues) {
                     this.issues = issues;
-                    View.call(
-                        this, {
-                            className: 'cleanup'
-                        });
+                    View.call(this, {
+                        className: 'cleanup'
+                    });
                 }
                 mfExtend(IssueList, View, {
                     tagName: 'ul',
@@ -20904,8 +21577,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
         "resources/skins.minerva.scripts/page-issues/page/pageIssueFormatter.js": function(require, module) {
             (function() {
                 var newPageIssueLink = require('./PageIssueLink.js'),
-                    newPageIssueLearnMoreLink = require(
-                        './PageIssueLearnMoreLink.js');
+                    newPageIssueLearnMoreLink = require('./PageIssueLearnMoreLink.js');
 
                 function insertPageIssueBanner(issue, msg, overlayUrl, overlayManager, multiple) {
                     var $learnMoreEl = newPageIssueLearnMoreLink(msg),
@@ -20942,7 +21614,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     features = mw.config.get('wgMinervaFeatures', {}),
                     pageIssuesParser = require('./parser.js'),
                     pageIssuesOverlay = require('./overlay/pageIssuesOverlay.js'),
-                    pageIssueFormatter = require('./page/pageIssueFormatter.js'),
+                    pageIssueFormatter = require(
+                        './page/pageIssueFormatter.js'),
                     QUERY_STRING_FLAG = mw.util.getParamValue('minerva-issues'),
                     newTreatmentEnabled = features.pageIssues || QUERY_STRING_FLAG;
 
@@ -20994,15 +21667,15 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     var section, issueSummaries = [],
                         allIssues = {},
                         label, $lead = pageHTMLParser.getLeadSectionElement(),
-                        issueOverlayShowAll = CURRENT_NS === NS_CATEGORY || CURRENT_NS ===
-                        NS_TALK || !$lead,
+                        issueOverlayShowAll = CURRENT_NS === NS_CATEGORY || CURRENT_NS === NS_TALK || !$lead,
                         inline = newTreatmentEnabled && CURRENT_NS === 0;
                     if (newTreatmentEnabled) {
                         $('html').addClass('issues-group-B');
                     }
                     if (CURRENT_NS === NS_TALK || CURRENT_NS === NS_CATEGORY) {
                         section = KEYWORD_ALL_SECTIONS;
-                        issueSummaries = insertBannersOrNotice(pageHTMLParser, mw.msg('mobile-frontend-meta-data-issues-header-talk'), section, inline, overlayManager).issueSummaries;
+                        issueSummaries = insertBannersOrNotice(
+                            pageHTMLParser, mw.msg('mobile-frontend-meta-data-issues-header-talk'), section, inline, overlayManager).issueSummaries;
                         allIssues[section] = issueSummaries;
                     } else if (CURRENT_NS === NS_MAIN) {
                         label = mw.msg('mobile-frontend-meta-data-issues-header');
@@ -21017,8 +21690,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                             if (newTreatmentEnabled) {
                                 pageHTMLParser.$el.find(PageHTMLParser.HEADING_SELECTOR).each(function(i, headingEl) {
                                     var $headingEl = $(headingEl),
-                                        sectionNum = $headingEl.find('.edit-page').
-                                    data('section');
+                                        sectionNum = $headingEl.find('.edit-page').data('section');
                                     if (sectionNum) {
                                         section = sectionNum.toString();
                                         issueSummaries = insertBannersOrNotice(pageHTMLParser, label, section, inline, overlayManager).issueSummaries;
@@ -21028,7 +21700,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                             }
                         }
                     }
-                    overlayManager.add(new RegExp('^/issues/(\\d+|' + KEYWORD_ALL_SECTIONS + ')$'), function(section) {
+                    overlayManager.add(new RegExp(
+                        '^/issues/(\\d+|' + KEYWORD_ALL_SECTIONS + ')$'), function(section) {
                         return pageIssuesOverlay(getIssues(allIssues, section), section, CURRENT_NS);
                     });
                 }
@@ -21064,19 +21737,19 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     if (!UriUtil.isInternal(mwUri)) {
                         return null;
                     }
-                    if ((options || {}).validateReadOnlyLink && !
-                        isReadOnlyUri(mwUri)) {
+                    if ((options || {}).validateReadOnlyLink && !isReadOnlyUri(mwUri)) {
                         return null;
                     }
                     if (mwUri.query.title) {
-                        regExp = new RegExp('^' + mw.RegExp.escape(mw.config.get('wgScriptPath')) + '/');
+                        regExp = new RegExp('^' + mw.util.escapeRegExp(mw.config.get('wgScriptPath')) + '/');
                         matches = regExp.test(mwUri.path);
                         if (!matches) {
                             return null;
                         }
                         title = mwUri.query.title;
                     } else {
-                        regExp = new RegExp('^' + mw.RegExp.escape(mw.config.get('wgArticlePath')).replace('\\$1', '(.+)'));
+                        regExp = new
+                        RegExp('^' + mw.util.escapeRegExp(mw.config.get('wgArticlePath')).replace('\\$1', '(.+)'));
                         matches = regExp.exec(mwUri.path);
                         if (!matches || !matches[1]) {
                             return null;
@@ -21108,8 +21781,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
 
                 function bind(window, component) {
                     var toggle = component.querySelector(toggleSelector),
-                        checkbox = (
-                            component.querySelector(checkboxSelector));
+                        checkbox = (component.querySelector(checkboxSelector));
                     window.addEventListener('click', function(event) {
                         if (event.target !== toggle && event.target !== checkbox) {
                             _dismiss(checkbox);
@@ -21148,8 +21820,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 $definer = $('<div>').attr({
                     dir: 'rtl',
                     style: 'font-size: 14px; width: 4px; height: 1px; position: absolute; top: -1000px; overflow: scroll;'
-                }).
-                text('ABCD');
+                }).text('ABCD');
                 $definer.appendTo('body');
                 definer = $definer[0];
                 if (definer.scrollLeft > 0) {
@@ -21191,7 +21862,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 dir = $tabContainer.css('direction') || 'ltr';
                 leftMostChild = dir === 'ltr' ? tabContainer.firstElementChild : tabContainer.lastElementChild;
                 rightMostChild = dir === 'ltr' ? tabContainer.lastElementChild : tabContainer.firstElementChild;
-                widthDiff = tabContainer.clientWidth - selectedTab.clientWidth;
+                widthDiff = tabContainer.clientWidth - selectedTab.
+                clientWidth;
                 if (selectedTab === leftMostChild) {
                     if (dir === 'ltr' || widthDiff >= 0) {
                         setScrollLeft(0);
@@ -21224,8 +21896,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
         },
         "resources/skins.minerva.scripts/Toolbar.js": function(require, module) {
             (function(M) {
-                var
-                    mobile = M.require('mobile.startup'),
+                var mobile = M.require('mobile.startup'),
                     ToggleList = require('../../components/ToggleList/ToggleList.js'),
                     downloadPageAction = require('./downloadPageAction.js').downloadPageAction,
                     Icon = mobile.Icon,
@@ -21259,8 +21930,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                         enabledClass = enabledEditIcon.getGlyphClassName(),
                         disabledClass = disabledEditIcon.getGlyphClassName();
                     if (mw.config.get('wgMinervaReadOnly')) {
-                        $('#ca-edit').removeClass(enabledClass)
-                            .addClass(disabledClass);
+                        $('#ca-edit').removeClass(enabledClass).addClass(disabledClass);
                     }
                 }
 
@@ -21313,14 +21983,8 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 var M = mw.mobileFrontend,
                     mobile = M.require('mobile.startup'),
                     SearchOverlay = mobile.search.SearchOverlay,
-                    SearchGateway = mobile.search.SearchGateway,
-                    overlayManager = require('./overlayManager.js'),
-                    searchLogger = mobile.search.MobileWebSearchLogger,
-                    $searchInput = $('#searchInput'),
-                    placeholder = $searchInput.attr('placeholder'),
-                    $searchBar = $('#searchInput, #searchIcon, .skin-minerva-search-trigger'),
-                    searchRoute = new RegExp(/\/search/),
-                    searchOverlayInstance;
+                    SearchGateway = mobile.search.
+                SearchGateway, overlayManager = mobile.OverlayManager.getSingleton(), searchLogger = mobile.search.MobileWebSearchLogger, $searchInput = $('#searchInput'), placeholder = $searchInput.attr('placeholder'), $searchBar = $('#searchInput, #searchIcon, .skin-minerva-search-trigger'), searchRoute = new RegExp(/\/search/), searchOverlayInstance;
                 if (mw.config.get('skin') !== 'minerva') {
                     return;
                 }
@@ -21340,8 +22004,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                             searchTerm: $searchInput.val(),
                             placeholderMsg: placeholder
                         });
-                        searchLogger.register(
-                            searchOverlayInstance);
+                        searchLogger.register(searchOverlayInstance);
                     }
                     return searchOverlayInstance;
                 }
@@ -21376,8 +22039,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                     if (urlComponents.length > 1) {
                         href = '#' + urlComponents[1];
                     }
-                    references.showReference(href,
-                        currentPage, $dest.text(), currentPageHTMLParser, gateway);
+                    references.showReference(href, currentPage, $dest.text(), currentPageHTMLParser, gateway);
                 }
 
                 function onClickReference(ev) {
@@ -21389,39 +22051,11 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
                 }
                 init();
             };
-        },
-        "resources/skins.minerva.scripts/toc.js": function(require, module) {
-            (function(M) {
-                var mobile = M.require('mobile.startup'),
-                    Toggler = mobile.Toggler,
-                    TableOfContents = mobile.toc.TableOfContents,
-                    eventBus = mobile.eventBusSingleton;
-
-                function init(page, $toc) {
-                    var sections = page.getSections(),
-                        toc = new TableOfContents({
-                            sections: sections
-                        });
-                    new Toggler({
-                        $container: toc.$el,
-                        prefix: 'toc-',
-                        page: page,
-                        isClosed: !0,
-                        eventBus: eventBus
-                    });
-                    if ($toc.length > 0) {
-                        $toc.replaceWith(toc.$el);
-                    } else {
-                        toc.appendTo(page.getLeadSectionElement());
-                    }
-                }
-                module.exports = init;
-            }(mw.mobileFrontend));
         }
     }
 }, {
     "css": [
-        ".last-modified-bar.active{background-color:#00af89;color:#fff}.last-modified-bar.active a{color:#fff}.truncated-text{white-space:nowrap;overflow:hidden;-webkit-text-overflow:ellipsis;text-overflow:ellipsis}@-webkit-keyframes fadeInImage{from{opacity:0}to{opacity:1}}@keyframes fadeInImage{from{opacity:0}to{opacity:1}}img.image-lazy-loaded{-webkit-animation:fadeInImage 0.3s ease-in;-moz-animation:fadeInImage 0.3s ease-in;animation:fadeInImage 0.3s ease-in}      .mw-mf-cleanup{display:block;margin:0;padding:0;font-size:0.8em;color:#72777d}.overlay-issues .cleanup \u003E li{border-bottom:solid 1px #c8ccd1}.overlay-issues .cleanup \u003E li .issue-notice{padding:24px 24px 24px 0}.overlay-issues .cleanup \u003E li .issue-notice .mw-ui-icon{float:left}.overlay-issues .cleanup \u003E li small,.overlay-issues .cleanup \u003E li .hide-when-compact{font-size:0.8em}.overlay-issues .cleanup \u003E li .hide-when-compact{display:block;margin:8px 0}.overlay-issues .issue-details{padding-left:3.5em}.overlay-issues .issue-details \u003E :first-line{line-height:1}.overlay-issues .issue-details small i{color:#72777d}"
+        ".toctitle .mw-ui-icon{position:absolute;top:1.2em}.toctitle .mw-ui-icon:first-child{left:0}.toctitle .mw-ui-icon:last-child{right:0}.toctogglecheckbox:checked ~ .toctitle .mw-ui-icon:last-child:before{-webkit-transform:rotate(-180deg);-moz-transform:rotate(-180deg);transform:rotate(-180deg)}.last-modified-bar.active{background-color:#00af89;color:#fff}.last-modified-bar.active a{color:#fff}.truncated-text{white-space:nowrap;overflow:hidden;-webkit-text-overflow:ellipsis;text-overflow:ellipsis}@-webkit-keyframes fadeInImage{from{opacity:0}to{opacity:1}}@keyframes fadeInImage{from{opacity:0}to{opacity:1}}img.image-lazy-loaded{-webkit-animation:fadeInImage 0.3s ease-in;-moz-animation:fadeInImage 0.3s ease-in;animation:fadeInImage 0.3s ease-in}      .mw-mf-cleanup{display:block;margin:0;padding:0;font-size:0.8em;color:#72777d}.overlay-issues .cleanup \u003E li{border-bottom:solid 1px #c8ccd1}.overlay-issues .cleanup \u003E li .issue-notice{padding:24px 24px 24px 0}.overlay-issues .cleanup \u003E li .issue-notice .mw-ui-icon{float:left}.overlay-issues .cleanup \u003E li small,.overlay-issues .cleanup \u003E li .hide-when-compact{font-size:0.8em}.overlay-issues .cleanup \u003E li .hide-when-compact{display:block;margin:8px 0}.overlay-issues .issue-details{padding-left:3.5em}.overlay-issues .issue-details \u003E :first-line{line-height:1}.overlay-issues .issue-details small i{color:#72777d}"
     ]
 }, {
     "echo-badge-count": "{{PLURAL:$1|$1|100={{formatnum:99}}+}}",
@@ -21446,39 +22080,7 @@ mw.loader.implement("skins.minerva.scripts@1ynb5wg", {
     "menu.mustache": "\u003Cdiv class=\"menu view-border-box\"\u003E\n\t{{#groups}}\n\t\u003Cul\u003E\n\t\t{{! \".\" means \"current context\", which allows us to iterate over Plain Old PHP Arrays™. }}\n\t\t{{#.}}\n\t\t\t{{\u003E menuGroup}}\n\t\t{{/.}}\n\t\u003C/ul\u003E\n\t{{/groups}}\n\t\u003Cul class=\"hlist\"\u003E\n\t\t{{#sitelinks}}\n\t\t\t{{\u003E menuGroup}}\n\t\t{{/sitelinks}}\n\t\u003C/ul\u003E\n\u003C/div\u003E\n",
     "menuGroup.mustache": "\u003Cli class=\"{{class}}\"\u003E\n  {{#components}}\n    \u003Ca href=\"{{href}}\" class=\"{{class}}\" data-event-name=\"{{data-event-name}}\"\u003E{{text}}\u003C/a\u003E\n  {{/components}}\n\u003C/li\u003E\n"
 });
-mw.loader.implement("skins.minerva.toggling@05j1x23", function($, jQuery, require, module) {
-    (function(M) {
-        var $contentContainer = $('#mw-content-text > .mw-parser-output'),
-            mobile = M.require('mobile.startup'),
-            currentPage = mobile.currentPage(),
-            currentPageHTMLParser = mobile.currentPageHTMLParser(),
-            Toggler = mobile.Toggler,
-            eventBus = mobile.eventBusSingleton;
-        if (!currentPageHTMLParser.getLeadSectionElement()) {
-            return;
-        }
-        if ($contentContainer.length === 0) {
-            $contentContainer = $('#mw-content-text');
-        }
-
-        function init($container, prefix, page) {
-            $container.find('> h1,> h2,> h3,> h4,> h5,> h6').addClass('section-heading').removeAttr('onclick');
-            if (window.mfTempOpenSection !== undefined) {
-                delete window.mfTempOpenSection;
-            }
-            new Toggler({
-                $container: $container,
-                prefix: prefix,
-                page: page,
-                eventBus: eventBus
-            });
-        }
-        if (!currentPage.inNamespace('special') && mw.config.get('wgAction') === 'view') {
-            init($contentContainer, 'content-', currentPage);
-        }
-    }(mw.mobileFrontend));
-});
-mw.loader.implement("skins.minerva.watchstar@10u0zq2", function($, jQuery, require, module) {
+mw.loader.implement("skins.minerva.watchstar@10u0z", function($, jQuery, require, module) {
     (function(M) {
         var mobile = M.require('mobile.startup'),
             currentPage = mobile.currentPage(),
@@ -21501,10 +22103,10 @@ mw.loader.implement("skins.minerva.watchstar@10u0zq2", function($, jQuery, requi
         init(currentPage);
     }(mw.mobileFrontend));
 });
-mw.loader.implement("skins.minerva.options.share.icon@1hk9ko9", null, {
-    "css": [".mw-ui-icon-minerva-share:before{background-image:url(/w/load.php?modules=skins.minerva.options.share.icon\u0026image=share\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg width=%2224%22 height=%2224%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath fill=%22none%22 d=%22M-1-1h26v26H-1z%22/%3E%3Cg%3E%3Cpath d=%22M12.763 8.75v9h-2v-9H6.264l5.499-7 5.611 7h-4.611zm6.89 5.222h2.222v5.556a2.223 2.223 0 0 1-2.222 2.222H4.097a2.223 2.223 0 0 1-2.222-2.222v-5.556h2v5.778h16v-5.436l-.222-.342z%22 fill=%22%2354595D%22 fill-rule=%22evenodd%22/%3E%3C/g%3E%3C/svg%3E\")}"]
+mw.loader.implement("skins.minerva.options.share.icon@133yc", null, {
+    "css": [".mw-ui-icon-minerva-share:before{background-image:url(/w/load.php?modules=skins.minerva.options.share.icon\u0026image=share\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(\"data:image/svg+xml,%3Csvg width=%2224%22 height=%2224%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath fill=%22none%22 d=%22M-1-1h26v26H-1z%22/%3E%3Cg%3E%3Cpath d=%22M12.763 8.75v9h-2v-9H6.264l5.499-7 5.611 7h-4.611zm6.89 5.222h2.222v5.556a2.223 2.223 0 0 1-2.222 2.222H4.097a2.223 2.223 0 0 1-2.222-2.222v-5.556h2v5.778h16v-5.436l-.222-.342z%22 fill=%22%2354595D%22 fill-rule=%22evenodd%22/%3E%3C/g%3E%3C/svg%3E\")}"]
 });
-mw.loader.implement("user.defaults@02dn5og", function($, jQuery, require, module) {
+mw.loader.implement("user.defaults@1etoc", function($, jQuery, require, module) {
     mw.user.options.set({
         "monobook-responsive": !0,
         "flaggedrevssimpleui": 1,
@@ -21614,6 +22216,7 @@ mw.loader.implement("user.defaults@02dn5og", function($, jQuery, require, module
         "wllimit": 250,
         "useeditwarning": 1,
         "prefershttps": 1,
+        "requireemail": 0,
         "wlshowwikibase": 0,
         "wikilove-enabled": 1,
         "echo-cross-wiki-notifications": 1,
@@ -21681,8 +22284,8 @@ mw.loader.implement("user.defaults@02dn5og", function($, jQuery, require, module
         "echo-subscriptions-email-cx": !1
     });
 });
-mw.loader.implement("wikimedia.ui@1hq2mjv", null, {
+mw.loader.implement("wikimedia.ui@15ygx", null, {
     "css": [
-        ".wikimedia-ui-articleRedirect-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-articleRedirect,.mw-ui-icon-articleRedirect-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-articleRedirect,.mw-ui-icon-articleRedirect-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-infoFilled-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-infoFilled,.mw-ui-icon-infoFilled-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-infoFilled,.mw-ui-icon-infoFilled-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-upload-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-upload,.mw-ui-icon-upload-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-upload,.mw-ui-icon-upload-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-quotes-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-quotes,.mw-ui-icon-quotes-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-quotes,.mw-ui-icon-quotes-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-link-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-link,.mw-ui-icon-link-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-link,.mw-ui-icon-link-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-listBullet-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-listBullet,.mw-ui-icon-listBullet-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-listBullet,.mw-ui-icon-listBullet-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-userAvatar-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-userAvatar,.mw-ui-icon-userAvatar-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-userAvatar,.mw-ui-icon-userAvatar-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-userAvatarOutline-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-userAvatarOutline,.mw-ui-icon-userAvatarOutline-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-userAvatarOutline,.mw-ui-icon-userAvatarOutline-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-userTalk-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-userTalk,.mw-ui-icon-userTalk-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-userTalk,.mw-ui-icon-userTalk-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-logoWikidata-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-logoWikidata,.mw-ui-icon-logoWikidata-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-logoWikidata,.mw-ui-icon-logoWikidata-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.wikimedia-ui-logoWikimedia-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-invert.oo-ui-icon-logoWikimedia,.mw-ui-icon-logoWikimedia-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}.oo-ui-image-progressive.oo-ui-icon-logoWikimedia,.mw-ui-icon-logoWikimedia-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=0pqhkqt);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=0pqhkqt)}"
+        ".wikimedia-ui-articleRedirect-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-articleRedirect,.mw-ui-icon-articleRedirect-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-articleRedirect,.mw-ui-icon-articleRedirect-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=articleRedirect\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-infoFilled-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-infoFilled,.mw-ui-icon-infoFilled-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-infoFilled,.mw-ui-icon-infoFilled-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=infoFilled\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-upload-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-upload,.mw-ui-icon-upload-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-upload,.mw-ui-icon-upload-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=upload\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-quotes-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-quotes,.mw-ui-icon-quotes-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-quotes,.mw-ui-icon-quotes-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=quotes\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-link-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-link,.mw-ui-icon-link-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-link,.mw-ui-icon-link-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=link\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-listBullet-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-listBullet,.mw-ui-icon-listBullet-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-listBullet,.mw-ui-icon-listBullet-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=listBullet\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-userAvatar-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-userAvatar,.mw-ui-icon-userAvatar-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-userAvatar,.mw-ui-icon-userAvatar-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatar\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-userAvatarOutline-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-userAvatarOutline,.mw-ui-icon-userAvatarOutline-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-userAvatarOutline,.mw-ui-icon-userAvatarOutline-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userAvatarOutline\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-userTalk-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-userTalk,.mw-ui-icon-userTalk-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=invert\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=invert\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-userTalk,.mw-ui-icon-userTalk-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=progressive\u0026format=rasterized\u0026lang=en\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=userTalk\u0026variant=progressive\u0026format=original\u0026lang=en\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-logoWikidata-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-logoWikidata,.mw-ui-icon-logoWikidata-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-logoWikidata,.mw-ui-icon-logoWikidata-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikidata\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.wikimedia-ui-logoWikimedia-base20:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-invert.oo-ui-icon-logoWikimedia,.mw-ui-icon-logoWikimedia-invert:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=invert\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=invert\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}.oo-ui-image-progressive.oo-ui-icon-logoWikimedia,.mw-ui-icon-logoWikimedia-progressive:before{background-image:url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=progressive\u0026format=rasterized\u0026skin=minerva\u0026version=8vo4g);background-image:linear-gradient(transparent,transparent),url(/w/load.php?modules=wikimedia.ui\u0026image=logoWikimedia\u0026variant=progressive\u0026format=original\u0026skin=minerva\u0026version=8vo4g)}"
     ]
 });
